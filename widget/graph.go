@@ -11,6 +11,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/srwiley/oksvg"
@@ -113,7 +114,7 @@ func NewGraph(options ...GraphOpts) *Graph {
 	}
 
 	if g.opts.Title.Color == nil {
-		g.opts.Title.Color = theme.TextColor()
+		g.opts.Title.Color = theme.ForegroundColor()
 	}
 
 	g.ExtendBaseWidget(g)
@@ -127,7 +128,7 @@ func (g *Graph) CreateRenderer() fyne.WidgetRenderer {
 	g.title = canvas.NewText(g.opts.Title.Text, g.opts.Title.Color)
 	g.title.TextStyle = g.opts.Title.Style
 	g.title.TextSize = g.opts.Title.Size
-	g.canvas = fyne.NewContainer(g.title, g.image)
+	g.canvas = container.NewWithoutLayout(g.title, g.image)
 	return widget.NewSimpleRenderer(g.canvas)
 }
 

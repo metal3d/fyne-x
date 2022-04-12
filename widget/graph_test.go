@@ -30,9 +30,6 @@ func createGraphWithOptions() *Graph {
 
 func TestCreation(t *testing.T) {
 	graph := createGraph()
-	if graph == nil {
-		t.Error("Creation failed")
-	}
 
 	win := test.NewWindow(graph)
 	win.Resize(fyne.NewSize(500, 300))
@@ -45,7 +42,7 @@ func TestCreation(t *testing.T) {
 	assert.Equal(t, graph.opts.Title, GraphTile{
 		Text:  "",
 		Size:  theme.TextSize(),
-		Color: theme.TextColor(),
+		Color: theme.ForegroundColor(),
 		Style: fyne.TextStyle{},
 	})
 
@@ -59,9 +56,6 @@ func TestCreation(t *testing.T) {
 
 func TestCreationWithOptions(t *testing.T) {
 	graph := createGraphWithOptions()
-	if graph == nil {
-		t.Error("Creation failed")
-	}
 
 	win := test.NewWindow(graph)
 	win.Resize(fyne.NewSize(500, 300))
