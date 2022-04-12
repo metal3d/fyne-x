@@ -190,7 +190,7 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	defer g.locker.Unlock()
 
 	if g.image == nil || len(g.data) == 0 {
-		return image.NewAlpha(image.Rect(0, 0, 1, 1))
+		return image.NewAlpha(image.Rect(0, 0, w, h))
 	}
 
 	// prepare points
@@ -227,8 +227,8 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	}
 	reduce := height / (maxY - minY)
 	currentX := float32(0)
-	points[0] = [2]float32{-1, height + minY*reduce}
-	points[len(points)-1] = [2]float32{width + 1, height + minY*reduce + 1}
+	points[0] = [2]float32{-g.opts.StrokeWidth, height + minY*reduce + g.opts.StrokeWidth}
+	points[len(points)-1] = [2]float32{width + g.opts.StrokeWidth, height + minY*reduce + g.opts.StrokeWidth}
 
 	for i, d := range g.data {
 		y := height - d*reduce + minY*reduce

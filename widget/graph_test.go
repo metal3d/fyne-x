@@ -85,11 +85,57 @@ func TestRasterizer(t *testing.T) {
 	data := []float32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	graph.SetData(data)
 
+	win := test.NewWindow(graph)
+	win.Resize(fyne.NewSize(500, 300))
+	defer win.Close()
+
 	img := graph.rasterize(200, 400)
 	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
 
 	graph = createGraphWithOptions()
 	graph.SetData(data)
 	img = graph.rasterize(200, 400)
+	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
+}
+
+func TestRasterizerWithNegative(t *testing.T) {
+	graph := createGraph()
+	data := []float32{-1, -2, -3, -4, -5, -6, -7, -8, -9, -10}
+	graph.SetData(data)
+
+	win := test.NewWindow(graph)
+	win.Resize(fyne.NewSize(500, 300))
+	defer win.Close()
+
+	img := graph.rasterize(200, 400)
+	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
+
+	graph = createGraphWithOptions()
+	data = []float32{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4}
+	graph.SetData(data)
+	img = graph.rasterize(200, 400)
+	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
+
+}
+
+func TestWithNoData(t *testing.T) {
+	graph := createGraph()
+	win := test.NewWindow(graph)
+	win.Resize(fyne.NewSize(500, 300))
+	defer win.Close()
+
+	assert.Equal(t, len(graph.data), 0)
+	assert.Equal(t, graph.opts.StrokeColor, theme.ForegroundColor())
+	assert.Equal(t, graph.opts.FillColor, theme.DisabledButtonColor())
+	assert.Equal(t, graph.opts.StrokeWidth, float32(1))
+	assert.Equal(t, graph.opts.Title, GraphTile{
+		Text:  "",
+		Size:  theme.TextSize(),
+		Color: theme.ForegroundColor(),
+		Style: fyne.TextStyle{},
+	})
+
+	// call rasterizer
+	img := graph.rasterize(200, 400)
 	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
 }
