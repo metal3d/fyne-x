@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"image"
 	"image/color"
 	"testing"
 
@@ -77,4 +78,18 @@ func TestCreationWithOptions(t *testing.T) {
 
 	// rasterize should be called
 	assert.NotEqual(t, graph.image, nil)
+}
+
+func TestRasterizer(t *testing.T) {
+	graph := createGraph()
+	data := []float32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	graph.SetData(data)
+
+	img := graph.rasterize(200, 400)
+	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
+
+	graph = createGraphWithOptions()
+	graph.SetData(data)
+	img = graph.rasterize(200, 400)
+	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
 }

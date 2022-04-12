@@ -77,18 +77,14 @@ func NewGraph(options ...GraphOpts) *Graph {
 	if len(options) > 1 {
 		log.Println("Warning, too many options passed to NewGraph")
 	}
-
-	opts := &GraphOpts{}
-	if options != nil {
-		opts = &options[0]
-	}
 	g := &Graph{
 		data:   []float32{},
-		opts:   opts,
 		locker: sync.Mutex{},
 	}
 
-	if opts == nil {
+	if options != nil {
+		g.opts = &options[0]
+	} else {
 		g.opts = &GraphOpts{
 			StrokeWidth: 1,
 			StrokeColor: theme.ForegroundColor(),
@@ -119,16 +115,16 @@ func NewGraph(options ...GraphOpts) *Graph {
 
 	g.ExtendBaseWidget(g)
 
-	return g
-}
-
-// CreateRenderer is a private method to Fyne which links this widget to its renderer.
-func (g *Graph) CreateRenderer() fyne.WidgetRenderer {
 	g.image = canvas.NewRaster(g.rasterize)
 	g.title = canvas.NewText(g.opts.Title.Text, g.opts.Title.Color)
 	g.title.TextStyle = g.opts.Title.Style
 	g.title.TextSize = g.opts.Title.Size
 	g.canvas = container.NewWithoutLayout(g.title, g.image)
+	return g
+}
+
+// CreateRenderer is a private method to Fyne which links this widget to its renderer.
+func (g *Graph) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(g.canvas)
 }
 
