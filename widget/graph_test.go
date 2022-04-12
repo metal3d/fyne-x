@@ -11,11 +11,11 @@ import (
 )
 
 func createGraph() *Graph {
-	return NewGraph(nil)
+	return NewGraph()
 }
 
 func createGraphWithOptions() *Graph {
-	return NewGraph(&GraphOpts{
+	return NewGraph(GraphOpts{
 		StrokeColor: color.RGBA{0x11, 0x22, 0x33, 255},
 		FillColor:   color.RGBA{0x44, 0x55, 0x66, 255},
 		StrokeWidth: 5,

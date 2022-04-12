@@ -71,9 +71,16 @@ type Graph struct {
 	title  *canvas.Text
 }
 
-// NewGraph creates a new graph widget. The "opts" parameter is optional (you must set it to nil).
-//
-func NewGraph(opts *GraphOpts) *Graph {
+// NewGraph creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
+func NewGraph(options ...GraphOpts) *Graph {
+	if len(options) > 1 {
+		log.Println("Warning, too many options passed to NewGraph")
+	}
+
+	opts := &GraphOpts{}
+	if options != nil {
+		opts = &options[0]
+	}
 	g := &Graph{
 		data:   []float32{},
 		opts:   opts,
