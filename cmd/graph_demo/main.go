@@ -14,7 +14,7 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	xwidget "fyne.io/x/fyne/widget"
+	"fyne.io/x/fyne/widget/charts"
 )
 
 func main() {
@@ -25,13 +25,13 @@ func main() {
 	// to pause the "animation"
 	pause := make([]bool, n)
 
-	graphWidgets := make([]*xwidget.Graph, n)
+	graphWidgets := make([]*charts.LineChart, n)
 	graphBoxes := make([]fyne.CanvasObject, n)
 	datas := make([][]float32, n)
 
 	// create n graphs
 	for i := range graphWidgets {
-		graphWidgets[i] = xwidget.NewGraph(nil)
+		graphWidgets[i] = charts.NewGraph(nil)
 		// Set a title for the graph, use nice Border layout
 		graphBoxes[i] = container.NewBorder(
 			widget.NewLabelWithStyle(fmt.Sprintf("Graph %d", i+1), fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
@@ -48,7 +48,7 @@ func main() {
 		g.SetData(datas[j])
 
 		// we will play with mouse event and use drawing zone
-		func(j int, g *xwidget.Graph) {
+		func(j int, g *charts.LineChart) {
 			g.OnMouseIn = func(e *desktop.MouseEvent) {
 				pause[j] = true
 			}
@@ -92,7 +92,7 @@ func main() {
 	}()
 
 	// make a sinusoidal graph
-	sinus := xwidget.NewGraph(nil)
+	sinus := charts.NewGraph(nil)
 
 	// set the number of value to plot
 	const nx = 1024
@@ -125,7 +125,7 @@ On the left, it's a simple sinusoidal function drawn.
 }
 
 // This function is called when the mouse is moved on the graph. It creates 2 lines + on circle and a text to display the value at the mouse position.
-func OnMouseMoved(g *xwidget.Graph, e *desktop.MouseEvent) {
+func OnMouseMoved(g *charts.LineChart, e *desktop.MouseEvent) {
 	// get the value of data at the mouse position
 	val, curvePos := g.GetDataPosAt(e.Position)
 

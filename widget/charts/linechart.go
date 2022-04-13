@@ -1,4 +1,4 @@
-package widget
+package charts
 
 import (
 	"bytes"
@@ -12,7 +12,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/srwiley/oksvg"
@@ -38,8 +37,8 @@ type tplStruct struct {
 	StrokeWidth float32
 }
 
-// GraphOpts provides options for the graph.
-type GraphOpts struct {
+// LineGraphOpts provides options for the graph.
+type LineGraphOpts struct {
 
 	// FillColor is the color of the fill. Alpha is ignored.
 	FillColor color.Color
@@ -53,33 +52,22 @@ type GraphOpts struct {
 	// Title is the title of the graph.
 }
 
-// Graph widget provides a plotting widget for data.
-type Graph struct {
+// LineChart widget provides a plotting widget for data.
+type LineChart struct {
 	widget.BaseWidget
+	Graph
 	canvas  *fyne.Container
 	overlay *fyne.Container
 	data    []float32
 	image   *canvas.Raster
 	locker  sync.Mutex
-	opts    *GraphOpts
+	opts    *LineGraphOpts
 	yFix    [2]float32
-
-	// OnMouseIn is trigger when the mouse enters the widget.
-	OnMouseIn func(*desktop.MouseEvent)
-
-	// OnMouseOut is trigger when the mouse exits the widget.
-	OnMouseOut func()
-
-	// OnMouseMove is trigger when the mouse moves over the widget.
-	OnMouseMoved func(*desktop.MouseEvent)
-
-	// OnMouseUp is trigger when the mouse button is clicked or tapped on mobile device.
-	OnTapped func(*fyne.PointEvent)
 }
 
 // NewGraph creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
-func NewGraph(options *GraphOpts) *Graph {
-	g := &Graph{
+func NewGraph(options *LineGraphOpts) *LineChart {
+	g := &LineChart{
 		data:   []float32{},
 		locker: sync.Mutex{},
 		yFix:   [2]float32{},
@@ -88,7 +76,7 @@ func NewGraph(options *GraphOpts) *Graph {
 	if options != nil {
 		g.opts = options
 	} else {
-		g.opts = &GraphOpts{
+		g.opts = &LineGraphOpts{
 			StrokeWidth: 1,
 			StrokeColor: theme.ForegroundColor(),
 			FillColor:   theme.DisabledButtonColor(),
@@ -113,7 +101,7 @@ func NewGraph(options *GraphOpts) *Graph {
 }
 
 // CreateRenderer is a private method to Fyne which links this widget to its renderer.
-func (g *Graph) CreateRenderer() fyne.WidgetRenderer {
+func (g *LineChart) CreateRenderer() fyne.WidgetRenderer {
 	g.image = canvas.NewRaster(g.rasterize)
 	g.overlay = container.NewWithoutLayout()
 	g.canvas = container.NewWithoutLayout(g.image, g.overlay)
@@ -121,13 +109,13 @@ func (g *Graph) CreateRenderer() fyne.WidgetRenderer {
 }
 
 // GetDrawable returns the graph's overlay drawable container.
-func (g *Graph) GetDrawable() *fyne.Container {
+func (g *LineChart) GetDrawable() *fyne.Container {
 	return g.overlay
 }
 
 // GetDataPosAt returns the data value and and the exact position on the curve for a given position. This is
 // useful to draw something on the graph at mouse position for example.
-func (g *Graph) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
+func (g *LineChart) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
 
 	if len(g.data) == 0 {
 		return 0, fyne.NewPos(0, 0)
@@ -154,12 +142,12 @@ func (g *Graph) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
 	return value, fyne.NewPos(xp, y)
 }
 
-func (g *Graph) GetOptions() *GraphOpts {
+func (g *LineChart) GetOptions() *LineGraphOpts {
 	return g.opts
 }
 
 // MinSize returns the smallest size this widget can shrink to.
-func (g *Graph) MinSize() fyne.Size {
+func (g *LineChart) MinSize() fyne.Size {
 	if g.image == nil {
 		return fyne.NewSize(0, 0)
 	}
@@ -167,7 +155,7 @@ func (g *Graph) MinSize() fyne.Size {
 }
 
 // Refresh refreshes the graph.
-func (g *Graph) Refresh() {
+func (g *LineChart) Refresh() {
 
 	if g.image == nil {
 		return
@@ -177,7 +165,7 @@ func (g *Graph) Refresh() {
 }
 
 // Resize sets a new size for the graph.
-func (g *Graph) Resize(size fyne.Size) {
+func (g *LineChart) Resize(size fyne.Size) {
 	g.BaseWidget.Resize(size)
 	if g.canvas != nil {
 		g.canvas.Resize(size)
@@ -188,7 +176,7 @@ func (g *Graph) Resize(size fyne.Size) {
 }
 
 // SetData sets the data for the graph - each call to this method will redraw the graph.
-func (g *Graph) SetData(data []float32) {
+func (g *LineChart) SetData(data []float32) {
 	g.locker.Lock()
 	g.data = data
 	g.locker.Unlock()
@@ -196,7 +184,7 @@ func (g *Graph) SetData(data []float32) {
 }
 
 // Size returns the size of the graph widget.
-func (g *Graph) Size() fyne.Size {
+func (g *LineChart) Size() fyne.Size {
 	if g.canvas == nil {
 		return fyne.NewSize(0, 0)
 	}
@@ -204,7 +192,7 @@ func (g *Graph) Size() fyne.Size {
 }
 
 // This private method is linjed to g.image canvas.Raster property. It uses oksvg and rasterx to render the graph from a SVG template.
-func (g *Graph) rasterize(w, h int) image.Image {
+func (g *LineChart) rasterize(w, h int) image.Image {
 
 	g.locker.Lock()
 	defer g.locker.Unlock()
@@ -287,40 +275,4 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	graph.Draw(rasterx.NewDasher(w, h, scanner), 1)
 
 	return rgba
-}
-
-// MouseMoved is called when the mouse is moved over the widget.
-//
-// implements desktop.Hoverable
-func (g *Graph) MouseIn(e *desktop.MouseEvent) {
-	if g.OnMouseIn != nil {
-		g.OnMouseIn(e)
-	}
-}
-
-// MouseMoved is called when the mouse is moved over the widget.
-//
-// implements desktop.Hoverable
-func (g *Graph) MouseMoved(e *desktop.MouseEvent) {
-	if g.OnMouseMoved != nil {
-		g.OnMouseMoved(e)
-	}
-}
-
-// MouseOut is called when the mouse is moved out of the widget.
-//
-// implements desktop.Hoverable
-func (g *Graph) MouseOut() {
-	if g.OnMouseOut != nil {
-		g.OnMouseOut()
-	}
-}
-
-// Tapped is called when the widget is tapped or clicked.
-//
-// implements fyne.Tappable
-func (g *Graph) Tapped(e *fyne.PointEvent) {
-	if g.OnTapped != nil {
-		g.OnTapped(e)
-	}
 }

@@ -1,4 +1,4 @@
-package widget
+package charts
 
 import (
 	"image"
@@ -12,25 +12,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createGraph() *Graph {
+func createGraph() *LineChart {
 	return NewGraph(nil)
 }
 
-func createGraphWithOptions() *Graph {
-	return NewGraph(&GraphOpts{
+func createGraphWithOptions() *LineChart {
+	return NewGraph(&LineGraphOpts{
 		StrokeColor: color.RGBA{0x11, 0x22, 0x33, 255},
 		FillColor:   color.RGBA{0x44, 0x55, 0x66, 255},
 		StrokeWidth: 5,
 	})
 }
 
-func makeRasterize(win fyne.Window, graph *Graph) image.Image {
+func makeRasterize(win fyne.Window, graph *LineChart) image.Image {
 	win.Resize(fyne.NewSize(500, 300))
 	img := graph.rasterize(int(graph.Size().Width), int(graph.Size().Height))
 	return img
 }
 
-func assertSize(t *testing.T, img image.Image, graph *Graph) {
+func assertSize(t *testing.T, img image.Image, graph *LineChart) {
 	assert.Greater(t, img.Bounds().Size().X, 0)
 	assert.Greater(t, img.Bounds().Size().Y, 0)
 	assert.Equal(t, img.Bounds().Size().X, int(graph.Size().Width))
@@ -132,7 +132,7 @@ func TestGraph_WithNoData(t *testing.T) {
 }
 
 func TestGraph_GetOpts(t *testing.T) {
-	opts := &GraphOpts{
+	opts := &LineGraphOpts{
 		StrokeColor: color.RGBA{0x11, 0x22, 0x33, 255},
 		FillColor:   color.RGBA{0x44, 0x55, 0x66, 255},
 		StrokeWidth: 5,
