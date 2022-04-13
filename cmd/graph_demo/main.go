@@ -31,7 +31,7 @@ func main() {
 
 	// create n graphs
 	for i := range graphWidgets {
-		graphWidgets[i] = charts.NewGraph(nil)
+		graphWidgets[i] = charts.NewLineChart(nil)
 		// Set a title for the graph, use nice Border layout
 		graphBoxes[i] = container.NewBorder(
 			widget.NewLabelWithStyle(fmt.Sprintf("Graph %d", i+1), fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
@@ -92,7 +92,7 @@ func main() {
 	}()
 
 	// make a sinusoidal graph
-	sinus := charts.NewGraph(nil)
+	sinus := charts.NewLineChart(nil)
 
 	// set the number of value to plot
 	const nx = 1024

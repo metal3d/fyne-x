@@ -55,7 +55,7 @@ type LineGraphOpts struct {
 // LineChart widget provides a plotting widget for data.
 type LineChart struct {
 	widget.BaseWidget
-	Graph
+	graph
 	canvas  *fyne.Container
 	overlay *fyne.Container
 	data    []float32
@@ -65,8 +65,8 @@ type LineChart struct {
 	yFix    [2]float32
 }
 
-// NewGraph creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
-func NewGraph(options *LineGraphOpts) *LineChart {
+// NewLineChart creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
+func NewLineChart(options *LineGraphOpts) *LineChart {
 	g := &LineChart{
 		data:   []float32{},
 		locker: sync.Mutex{},

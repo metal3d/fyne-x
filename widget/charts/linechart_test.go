@@ -13,11 +13,11 @@ import (
 )
 
 func createGraph() *LineChart {
-	return NewGraph(nil)
+	return NewLineChart(nil)
 }
 
 func createGraphWithOptions() *LineChart {
-	return NewGraph(&LineGraphOpts{
+	return NewLineChart(&LineGraphOpts{
 		StrokeColor: color.RGBA{0x11, 0x22, 0x33, 255},
 		FillColor:   color.RGBA{0x44, 0x55, 0x66, 255},
 		StrokeWidth: 5,
@@ -137,7 +137,7 @@ func TestGraph_GetOpts(t *testing.T) {
 		FillColor:   color.RGBA{0x44, 0x55, 0x66, 255},
 		StrokeWidth: 5,
 	}
-	graph := NewGraph(opts)
+	graph := NewLineChart(opts)
 
 	assert.Equal(t, graph.opts, opts)
 	// in case of, check all fields
