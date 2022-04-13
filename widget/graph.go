@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/srwiley/oksvg"
@@ -37,8 +38,8 @@ type tplStruct struct {
 	StrokeWidth float32
 }
 
-// GraphTile defines a title for the graph.
-type GraphTile struct {
+// GraphTitle defines a title for the graph.
+type GraphTitle struct {
 	Color color.Color
 	Text  string
 	Style fyne.TextStyle
@@ -58,18 +59,24 @@ type GraphOpts struct {
 	StrokeColor color.Color
 
 	// Title is the title of the graph.
-	Title GraphTile
+	Title GraphTitle
 }
 
 // Graph widget provides a plotting widget for data.
 type Graph struct {
 	widget.BaseWidget
-	canvas *fyne.Container
-	data   []float32
-	image  *canvas.Raster
-	locker sync.Mutex
-	opts   *GraphOpts
-	title  *canvas.Text
+	canvas  *fyne.Container
+	overlay *fyne.Container
+	data    []float32
+	image   *canvas.Raster
+	locker  sync.Mutex
+	opts    *GraphOpts
+	title   *canvas.Text
+	yFix    [2]float32
+
+	OnMouseIn    func(*desktop.MouseEvent)
+	OnMouseOut   func()
+	OnMouseMoved func(*desktop.MouseEvent)
 }
 
 // NewGraph creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
@@ -80,6 +87,7 @@ func NewGraph(options ...GraphOpts) *Graph {
 	g := &Graph{
 		data:   []float32{},
 		locker: sync.Mutex{},
+		yFix:   [2]float32{},
 	}
 
 	if options != nil {
@@ -89,7 +97,7 @@ func NewGraph(options ...GraphOpts) *Graph {
 			StrokeWidth: 1,
 			StrokeColor: theme.ForegroundColor(),
 			FillColor:   theme.DisabledButtonColor(),
-			Title:       GraphTile{},
+			Title:       GraphTitle{},
 		}
 	}
 
@@ -115,17 +123,23 @@ func NewGraph(options ...GraphOpts) *Graph {
 
 	g.ExtendBaseWidget(g)
 
-	g.image = canvas.NewRaster(g.rasterize)
-	g.title = canvas.NewText(g.opts.Title.Text, g.opts.Title.Color)
-	g.title.TextStyle = g.opts.Title.Style
-	g.title.TextSize = g.opts.Title.Size
-	g.canvas = container.NewWithoutLayout(g.title, g.image)
 	return g
 }
 
 // CreateRenderer is a private method to Fyne which links this widget to its renderer.
 func (g *Graph) CreateRenderer() fyne.WidgetRenderer {
+	g.image = canvas.NewRaster(g.rasterize)
+	g.title = canvas.NewText(g.opts.Title.Text, g.opts.Title.Color)
+	g.title.TextStyle = g.opts.Title.Style
+	g.title.TextSize = g.opts.Title.Size
+	g.overlay = container.NewWithoutLayout()
+	g.canvas = container.NewWithoutLayout(g.title, g.image, g.overlay)
 	return widget.NewSimpleRenderer(g.canvas)
+}
+
+// GetDrawable returns the graph's underlying drawable.
+func (g *Graph) GetDrawable() *fyne.Container {
+	return g.overlay
 }
 
 // MinSize returns the smallest size this widget can shrink to.
@@ -134,14 +148,6 @@ func (g *Graph) MinSize() fyne.Size {
 		return fyne.NewSize(0, 0)
 	}
 	return g.image.MinSize()
-}
-
-// Move sets a new position for the graph.
-func (g *Graph) Move(pos fyne.Position) {
-	if g.canvas != nil {
-		g.canvas.Move(pos)
-	}
-	g.Refresh()
 }
 
 // Refresh refreshes the graph.
@@ -160,9 +166,11 @@ func (g *Graph) Refresh() {
 
 // Resize sets a new size for the graph.
 func (g *Graph) Resize(size fyne.Size) {
+	g.BaseWidget.Resize(size)
 	if g.canvas != nil {
 		g.image.Resize(size)
-		//g.canvas.Resize(size)
+		g.canvas.Resize(size)
+		g.overlay.Resize(size)
 	}
 	g.Refresh()
 }
@@ -192,6 +200,10 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	if g.image == nil || len(g.data) == 0 {
 		return image.NewAlpha(image.Rect(0, 0, w, h))
 	}
+
+	// <!> Force the width and height to be the same as the image size
+	w = int(g.image.Size().Width)
+	h = int(g.image.Size().Height)
 
 	// prepare points
 	points := make([][2]float32, len(g.data)+2)
@@ -226,6 +238,10 @@ func (g *Graph) rasterize(w, h int) image.Image {
 		maxY += g.opts.Title.Size
 	}
 	reduce := height / (maxY - minY)
+
+	// keep the Y fix value
+	g.yFix = [2]float32{minY, reduce}
+
 	currentX := float32(0)
 	points[0] = [2]float32{-g.opts.StrokeWidth, height + minY*reduce + g.opts.StrokeWidth}
 	points[len(points)-1] = [2]float32{width + g.opts.StrokeWidth, height + minY*reduce + g.opts.StrokeWidth}
@@ -259,4 +275,39 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	graph.Draw(rasterx.NewDasher(w, h, scanner), 1)
 
 	return rgba
+}
+
+func (g *Graph) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
+	stepX := g.image.Size().Width / float32(len(g.data))
+	// get the X value corresponding to the data index
+	x := int(pos.X / g.image.Size().Width * float32(len(g.data)))
+	value := g.data[int(x)]
+
+	// now, get the Y value corresponding to the data value
+	y := g.image.Size().Height - value*g.yFix[1] + g.yFix[0]*g.yFix[1]
+
+	// calculate the X value on the graph
+	xp := float32(x) * stepX
+
+	return value, fyne.NewPos(xp, y)
+}
+
+// implements desktop.Hoverable
+
+func (g *Graph) MouseIn(e *desktop.MouseEvent) {
+	if g.OnMouseIn != nil {
+		g.OnMouseIn(e)
+	}
+}
+
+func (g *Graph) MouseMoved(e *desktop.MouseEvent) {
+	if g.OnMouseMoved != nil {
+		g.OnMouseMoved(e)
+	}
+}
+
+func (g *Graph) MouseOut() {
+	if g.OnMouseOut != nil {
+		g.OnMouseOut()
+	}
 }

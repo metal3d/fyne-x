@@ -20,7 +20,7 @@ func createGraphWithOptions() *Graph {
 		StrokeColor: color.RGBA{0x11, 0x22, 0x33, 255},
 		FillColor:   color.RGBA{0x44, 0x55, 0x66, 255},
 		StrokeWidth: 5,
-		Title: GraphTile{
+		Title: GraphTitle{
 			Text:  "Test",
 			Size:  42,
 			Color: color.RGBA{0x77, 0x88, 0x99, 255},
@@ -40,7 +40,7 @@ func TestCreation(t *testing.T) {
 	assert.Equal(t, graph.opts.StrokeColor, theme.ForegroundColor())
 	assert.Equal(t, graph.opts.FillColor, theme.DisabledButtonColor())
 	assert.Equal(t, graph.opts.StrokeWidth, float32(1))
-	assert.Equal(t, graph.opts.Title, GraphTile{
+	assert.Equal(t, graph.opts.Title, GraphTitle{
 		Text:  "",
 		Size:  theme.TextSize(),
 		Color: theme.ForegroundColor(),
@@ -65,7 +65,7 @@ func TestCreationWithOptions(t *testing.T) {
 	assert.Equal(t, graph.opts.StrokeColor, color.RGBA{0x11, 0x22, 0x33, 255})
 	assert.Equal(t, graph.opts.FillColor, color.RGBA{0x44, 0x55, 0x66, 255})
 	assert.Equal(t, graph.opts.StrokeWidth, float32(5))
-	assert.Equal(t, graph.opts.Title, GraphTile{
+	assert.Equal(t, graph.opts.Title, GraphTitle{
 		Text:  "Test",
 		Size:  42,
 		Color: color.RGBA{0x77, 0x88, 0x99, 255},
@@ -128,7 +128,7 @@ func TestWithNoData(t *testing.T) {
 	assert.Equal(t, graph.opts.StrokeColor, theme.ForegroundColor())
 	assert.Equal(t, graph.opts.FillColor, theme.DisabledButtonColor())
 	assert.Equal(t, graph.opts.StrokeWidth, float32(1))
-	assert.Equal(t, graph.opts.Title, GraphTile{
+	assert.Equal(t, graph.opts.Title, GraphTitle{
 		Text:  "",
 		Size:  theme.TextSize(),
 		Color: theme.ForegroundColor(),
