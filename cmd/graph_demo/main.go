@@ -54,7 +54,7 @@ func main() {
 			}
 
 			g.OnMouseMoved = func(e *desktop.MouseEvent) {
-				OnMouseMoved(g, e)
+				onMouseMoved(g, e)
 			}
 
 			g.OnMouseOut = func() {
@@ -125,7 +125,7 @@ On the left, it's a simple sinusoidal function drawn.
 }
 
 // This function is called when the mouse is moved on the graph. It creates 2 lines + on circle and a text to display the value at the mouse position.
-func OnMouseMoved(g *charts.LineChart, e *desktop.MouseEvent) {
+func onMouseMoved(g *charts.LineChart, e *desktop.MouseEvent) {
 	// get the value of data at the mouse position
 	val, curvePos := g.GetDataPosAt(e.Position)
 

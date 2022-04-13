@@ -142,6 +142,7 @@ func (g *LineChart) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
 	return value, fyne.NewPos(xp, y)
 }
 
+// GetOptions returns the options of the graph. You can change the options after the graph is created.
 func (g *LineChart) GetOptions() *LineGraphOpts {
 	return g.opts
 }
