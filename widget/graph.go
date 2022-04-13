@@ -38,14 +38,6 @@ type tplStruct struct {
 	StrokeWidth float32
 }
 
-// GraphTitle defines a title for the graph.
-type GraphTitle struct {
-	Color color.Color
-	Text  string
-	Style fyne.TextStyle
-	Size  float32
-}
-
 // GraphOpts provides options for the graph.
 type GraphOpts struct {
 
@@ -59,7 +51,6 @@ type GraphOpts struct {
 	StrokeColor color.Color
 
 	// Title is the title of the graph.
-	Title GraphTitle
 }
 
 // Graph widget provides a plotting widget for data.
@@ -71,7 +62,6 @@ type Graph struct {
 	image   *canvas.Raster
 	locker  sync.Mutex
 	opts    *GraphOpts
-	title   *canvas.Text
 	yFix    [2]float32
 
 	OnMouseIn    func(*desktop.MouseEvent)
@@ -80,10 +70,7 @@ type Graph struct {
 }
 
 // NewGraph creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
-func NewGraph(options ...GraphOpts) *Graph {
-	if len(options) > 1 {
-		log.Println("Warning, too many options passed to NewGraph")
-	}
+func NewGraph(options *GraphOpts) *Graph {
 	g := &Graph{
 		data:   []float32{},
 		locker: sync.Mutex{},
@@ -91,13 +78,12 @@ func NewGraph(options ...GraphOpts) *Graph {
 	}
 
 	if options != nil {
-		g.opts = &options[0]
+		g.opts = options
 	} else {
 		g.opts = &GraphOpts{
 			StrokeWidth: 1,
 			StrokeColor: theme.ForegroundColor(),
 			FillColor:   theme.DisabledButtonColor(),
-			Title:       GraphTitle{},
 		}
 	}
 
@@ -106,19 +92,11 @@ func NewGraph(options ...GraphOpts) *Graph {
 	}
 
 	if g.opts.StrokeWidth == 0 {
-		g.opts.StrokeWidth = 1
+		g.opts.StrokeWidth = .7
 	}
 
 	if g.opts.FillColor == nil {
 		g.opts.FillColor = theme.DisabledButtonColor()
-	}
-
-	if g.opts.Title.Size == 0 {
-		g.opts.Title.Size = theme.TextSize()
-	}
-
-	if g.opts.Title.Color == nil {
-		g.opts.Title.Color = theme.ForegroundColor()
 	}
 
 	g.ExtendBaseWidget(g)
@@ -129,17 +107,44 @@ func NewGraph(options ...GraphOpts) *Graph {
 // CreateRenderer is a private method to Fyne which links this widget to its renderer.
 func (g *Graph) CreateRenderer() fyne.WidgetRenderer {
 	g.image = canvas.NewRaster(g.rasterize)
-	g.title = canvas.NewText(g.opts.Title.Text, g.opts.Title.Color)
-	g.title.TextStyle = g.opts.Title.Style
-	g.title.TextSize = g.opts.Title.Size
 	g.overlay = container.NewWithoutLayout()
-	g.canvas = container.NewWithoutLayout(g.title, g.image, g.overlay)
+	g.canvas = container.NewWithoutLayout(g.image, g.overlay)
 	return widget.NewSimpleRenderer(g.canvas)
 }
 
-// GetDrawable returns the graph's underlying drawable.
+// GetDrawable returns the graph's overlay drawable container.
 func (g *Graph) GetDrawable() *fyne.Container {
 	return g.overlay
+}
+
+// GetDataPosAt returns the data value and and the exact position on the curve for a given position. This is
+// useful to draw something on the graph at mouse position for example.
+func (g *Graph) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
+
+	if len(g.data) == 0 {
+		return 0, fyne.NewPos(0, 0)
+	}
+
+	if g.image == nil {
+		return 0, fyne.NewPos(0, 0)
+	}
+
+	stepX := g.image.Size().Width / float32(len(g.data))
+	// get the X value corresponding to the data index
+	x := int(pos.X / g.image.Size().Width * float32(len(g.data)))
+	value := g.data[int(x)]
+
+	// now, get the Y value corresponding to the data value
+	y := g.image.Size().Height - value*g.yFix[1] + g.yFix[0]*g.yFix[1]
+
+	// calculate the X value on the graph
+	xp := float32(x) * stepX
+
+	return value, fyne.NewPos(xp, y)
+}
+
+func (g *Graph) GetOptions() *GraphOpts {
+	return g.opts
 }
 
 // MinSize returns the smallest size this widget can shrink to.
@@ -156,10 +161,6 @@ func (g *Graph) Refresh() {
 	if g.image == nil {
 		return
 	}
-	if g.opts.Title.Text != "" {
-		// move the text to the center of the canvas
-		g.title.Move(fyne.NewPos(g.image.Size().Width/2-g.title.MinSize().Width/2, 0))
-	}
 	g.image.Refresh()
 	g.canvas.Refresh()
 }
@@ -168,8 +169,9 @@ func (g *Graph) Refresh() {
 func (g *Graph) Resize(size fyne.Size) {
 	g.BaseWidget.Resize(size)
 	if g.canvas != nil {
-		g.image.Resize(size)
+		//g.canvas.Resize(size)
 		g.canvas.Resize(size)
+		g.image.Resize(size)
 		g.overlay.Resize(size)
 	}
 	g.Refresh()
@@ -198,12 +200,14 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	defer g.locker.Unlock()
 
 	if g.image == nil || len(g.data) == 0 {
-		return image.NewAlpha(image.Rect(0, 0, w, h))
+		return image.NewRGBA(image.Rect(0, 0, w, h))
 	}
 
 	// <!> Force the width and height to be the same as the image size
-	w = int(g.image.Size().Width)
-	h = int(g.image.Size().Height)
+	// To not do this will cause the graph to be scaled down.
+	// TODO: why is this needed?
+	//w = int(g.image.Size().Width)
+	//h = int(g.image.Size().Height)
 
 	// prepare points
 	points := make([][2]float32, len(g.data)+2)
@@ -233,15 +237,13 @@ func (g *Graph) rasterize(w, h int) image.Image {
 		minY = 0
 	}
 
-	// if we've got a title to draw, reduce the height by the height of the title
-	if g.opts.Title.Text != "" {
-		maxY += g.opts.Title.Size
-	}
+	// reduction factor
 	reduce := height / (maxY - minY)
 
-	// keep the Y fix value
+	// keep the Y fix value - used by GetDataPosAt()
 	g.yFix = [2]float32{minY, reduce}
 
+	// build point positions
 	currentX := float32(0)
 	points[0] = [2]float32{-g.opts.StrokeWidth, height + minY*reduce + g.opts.StrokeWidth}
 	points[len(points)-1] = [2]float32{width + g.opts.StrokeWidth, height + minY*reduce + g.opts.StrokeWidth}
@@ -252,7 +254,7 @@ func (g *Graph) rasterize(w, h int) image.Image {
 		currentX += stepX
 	}
 
-	// render tpl
+	// render SVG template
 	buff := new(bytes.Buffer)
 	svgTpl.Execute(buff, tplStruct{
 		Data:        points,
@@ -263,11 +265,11 @@ func (g *Graph) rasterize(w, h int) image.Image {
 		Fill:        fmt.Sprintf("#%02x%02x%02x", uint8(bgR/0x101), uint8(bgG/0x101), uint8(bgB/0x101)),
 	})
 
-	// convert the svg to an image
+	// convert the svg to an image.Image
 	graph, err := oksvg.ReadIconStream(buff)
 	if err != nil {
 		log.Println(err)
-		return image.NewAlpha(image.Rect(0, 0, w, h))
+		return image.NewRGBA(image.Rect(0, 0, w, h))
 	}
 	rgba := image.NewRGBA(image.Rect(0, 0, w, h))
 	graph.SetTarget(0, 0, float64(w), float64(h))
@@ -275,21 +277,6 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	graph.Draw(rasterx.NewDasher(w, h, scanner), 1)
 
 	return rgba
-}
-
-func (g *Graph) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
-	stepX := g.image.Size().Width / float32(len(g.data))
-	// get the X value corresponding to the data index
-	x := int(pos.X / g.image.Size().Width * float32(len(g.data)))
-	value := g.data[int(x)]
-
-	// now, get the Y value corresponding to the data value
-	y := g.image.Size().Height - value*g.yFix[1] + g.yFix[0]*g.yFix[1]
-
-	// calculate the X value on the graph
-	xp := float32(x) * stepX
-
-	return value, fyne.NewPos(xp, y)
 }
 
 // implements desktop.Hoverable
