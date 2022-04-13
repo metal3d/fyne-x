@@ -31,14 +31,14 @@ var svgTpl = template.Must(template.New("svg").Parse(svgTplString))
 type tplStruct struct {
 	Width       int
 	Height      int
-	Data        [][2]float32
+	Data        [][2]float64
 	Fill        string
 	StrokeColor string
 	StrokeWidth float32
 }
 
-// LineGraphOpts provides options for the graph.
-type LineGraphOpts struct {
+// LineCharthOpts provides options for the graph.
+type LineCharthOpts struct {
 
 	// FillColor is the color of the fill. Alpha is ignored.
 	FillColor color.Color
@@ -56,27 +56,28 @@ type LineGraphOpts struct {
 type LineChart struct {
 	widget.BaseWidget
 	graph
-	canvas  *fyne.Container
-	overlay *fyne.Container
-	data    []float32
-	image   *canvas.Raster
-	locker  sync.Mutex
-	opts    *LineGraphOpts
-	yFix    [2]float32
+	canvas    *fyne.Container
+	overlay   *fyne.Container
+	data      []float64
+	image     *canvas.Raster
+	locker    sync.Mutex
+	opts      *LineCharthOpts
+	yFix      [2]float64
+	rasterize func(int, int) image.Image
 }
 
 // NewLineChart creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
-func NewLineChart(options *LineGraphOpts) *LineChart {
+func NewLineChart(options *LineCharthOpts) *LineChart {
 	g := &LineChart{
-		data:   []float32{},
+		data:   []float64{},
 		locker: sync.Mutex{},
-		yFix:   [2]float32{},
+		yFix:   [2]float64{},
 	}
 
 	if options != nil {
 		g.opts = options
 	} else {
-		g.opts = &LineGraphOpts{
+		g.opts = &LineCharthOpts{
 			StrokeWidth: 1,
 			StrokeColor: theme.ForegroundColor(),
 			FillColor:   theme.DisabledButtonColor(),
@@ -102,6 +103,7 @@ func NewLineChart(options *LineGraphOpts) *LineChart {
 
 // CreateRenderer is a private method to Fyne which links this widget to its renderer.
 func (g *LineChart) CreateRenderer() fyne.WidgetRenderer {
+	g.rasterize = g._rasterize
 	g.image = canvas.NewRaster(g.rasterize)
 	g.overlay = container.NewWithoutLayout()
 	g.canvas = container.NewWithoutLayout(g.image, g.overlay)
@@ -115,7 +117,7 @@ func (g *LineChart) GetDrawable() *fyne.Container {
 
 // GetDataPosAt returns the data value and and the exact position on the curve for a given position. This is
 // useful to draw something on the graph at mouse position for example.
-func (g *LineChart) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
+func (g *LineChart) GetDataPosAt(pos fyne.Position) (float64, fyne.Position) {
 
 	if len(g.data) == 0 {
 		return 0, fyne.NewPos(0, 0)
@@ -134,16 +136,16 @@ func (g *LineChart) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
 	value := g.data[int(x)]
 
 	// now, get the Y value corresponding to the data value
-	y := g.Size().Height - value*g.yFix[1] + g.yFix[0]*g.yFix[1]
+	y := float64(g.image.Size().Height) - value*g.yFix[1] + g.yFix[0]*g.yFix[1]
 
 	// calculate the X value on the graph
 	xp := float32(x) * stepX
 
-	return value, fyne.NewPos(xp, y)
+	return value, fyne.NewPos(xp, float32(y))
 }
 
 // GetOptions returns the options of the graph. You can change the options after the graph is created.
-func (g *LineChart) GetOptions() *LineGraphOpts {
+func (g *LineChart) GetOptions() *LineCharthOpts {
 	return g.opts
 }
 
@@ -177,7 +179,7 @@ func (g *LineChart) Resize(size fyne.Size) {
 }
 
 // SetData sets the data for the graph - each call to this method will redraw the graph.
-func (g *LineChart) SetData(data []float32) {
+func (g *LineChart) SetData(data []float64) {
 	g.locker.Lock()
 	g.data = data
 	g.locker.Unlock()
@@ -192,8 +194,14 @@ func (g *LineChart) Size() fyne.Size {
 	return g.canvas.Size()
 }
 
+//
+func (g *LineChart) setRasterFunc(f func(int, int) image.Image) {
+	g.rasterize = f
+	g.Refresh()
+}
+
 // This private method is linjed to g.image canvas.Raster property. It uses oksvg and rasterx to render the graph from a SVG template.
-func (g *LineChart) rasterize(w, h int) image.Image {
+func (g *LineChart) _rasterize(w, h int) image.Image {
 
 	g.locker.Lock()
 	defer g.locker.Unlock()
@@ -209,7 +217,7 @@ func (g *LineChart) rasterize(w, h int) image.Image {
 	h = int(g.image.Size().Height)
 
 	// prepare points
-	points := make([][2]float32, len(g.data)+2)
+	points := make([][2]float64, len(g.data)+3)
 
 	// colors
 	fgR, fgG, fgB, _ := g.opts.StrokeColor.RGBA()
@@ -217,11 +225,11 @@ func (g *LineChart) rasterize(w, h int) image.Image {
 
 	// Calculate the max and min values to scale the graph
 	// and the step on X to move for each "point"
-	width := float32(w)
-	height := float32(h)
-	stepX := width / float32(len(g.data))
-	maxY := float32(0)
-	minY := float32(0)
+	width := float64(w)
+	height := float64(h)
+	stepX := width / float64(len(g.data))
+	maxY := float64(0)
+	minY := float64(0)
 	for _, v := range g.data {
 		if v > maxY {
 			maxY = v
@@ -240,16 +248,25 @@ func (g *LineChart) rasterize(w, h int) image.Image {
 	reduce := height / (maxY - minY)
 
 	// keep the Y fix value - used by GetDataPosAt()
-	g.yFix = [2]float32{minY, reduce}
+	g.yFix = [2]float64{minY, reduce}
 
 	// build point positions
-	currentX := float32(0)
-	points[0] = [2]float32{-g.opts.StrokeWidth, height + minY*reduce + g.opts.StrokeWidth}
-	points[len(points)-1] = [2]float32{width + g.opts.StrokeWidth, height + minY*reduce + g.opts.StrokeWidth}
+	currentX := float64(0)
+	sw := float64(g.opts.StrokeWidth)
+	points[0] = [2]float64{sw, height + minY*reduce + sw}
+	points[len(points)-2] = [2]float64{width + sw, height - g.data[len(g.data)-1]*reduce + minY*reduce}
+	points[len(points)-1] = [2]float64{width + sw*2, height + minY*reduce + sw}
 
 	for i, d := range g.data {
-		y := height - d*reduce + minY*reduce
-		points[i+1] = [2]float32{currentX, y}
+		y := float64(0)
+		if d < 0 {
+			y = height - sw - d*reduce + minY*reduce
+		} else if d > 0 {
+			y = height + sw - d*reduce + minY*reduce
+		} else {
+			y = height + minY*reduce
+		}
+		points[i+1] = [2]float64{currentX, y}
 		currentX += stepX
 	}
 

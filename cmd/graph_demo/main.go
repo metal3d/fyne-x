@@ -18,8 +18,8 @@ import (
 )
 
 func main() {
-	n := 4
-	app := app.New()
+	n := 3
+	app := app.NewWithID("test.fynex.metal3d.org")
 	w := app.NewWindow("Graphs")
 
 	// to pause the "animation"
@@ -27,7 +27,7 @@ func main() {
 
 	graphWidgets := make([]*charts.LineChart, n)
 	graphBoxes := make([]fyne.CanvasObject, n)
-	datas := make([][]float32, n)
+	datas := make([][]float64, n)
 
 	// create n graphs
 	for i := range graphWidgets {
@@ -41,9 +41,9 @@ func main() {
 
 	for j, g := range graphWidgets {
 		// fill the data with random values
-		datas[j] = make([]float32, 64)
+		datas[j] = make([]float64, 64)
 		for k := range datas[j] {
-			datas[j][k] = rand.Float32() * 50
+			datas[j][k] = rand.Float64() * 50
 		}
 		g.SetData(datas[j])
 
@@ -71,7 +71,7 @@ func main() {
 	// Let's change the graph colors
 	graphWidgets[1].GetOptions().StrokeColor = theme.PrimaryColor()
 	graphWidgets[2].GetOptions().StrokeColor = theme.FocusColor()
-	graphWidgets[2].GetOptions().FillColor = theme.PressedColor()
+	//graphWidgets[2].GetOptions().FillColor = theme.PressedColor()
 
 	go func() {
 		// Contiuously update the data
@@ -84,7 +84,7 @@ func main() {
 					continue
 				}
 				lock[i].Lock()
-				datas[i] = append(datas[i][1:], rand.Float32()*50)
+				datas[i] = append(datas[i][1:], rand.Float64()*50)
 				graphWidgets[i].SetData(datas[i])
 				lock[i].Unlock()
 			}
@@ -95,18 +95,48 @@ func main() {
 	sinus := charts.NewLineChart(nil)
 
 	// set the number of value to plot
-	const nx = 1024
+	const nx = 100
 	// set the y values slice
-	siny := make([]float32, nx)
+	siny := make([]float64, nx)
 
 	for i := range [nx]int{} {
-		siny[i] = float32(math.Sin(float64(i) / 100)) // devide per 100 to get a smooth curve
+		siny[i] = math.Sin(float64(i) / 10) // devide per 100 to get a smooth curve
 	}
 	sinus.SetData(siny)
 
+	// create a slider values
+	slider := widget.NewSlider(float64(nx), 1000)
+	slider.OnChanged = func(value float64) {
+		siny = make([]float64, int(value))
+		for i := 0; i < int(value); i++ {
+			siny[i] = math.Sin(float64(i) / 10) // devide per 100 to get a smooth curve
+		}
+		sinus.SetData(siny)
+	}
+	sinContainer := container.NewBorder(
+		nil, slider, nil, nil, sinus,
+	)
+
 	// build the UI
 	grid := container.NewGridWithColumns(2, graphBoxes...)
-	grid.Add(sinus)
+	grid.Add(sinContainer)
+
+	// create a barchart
+	bar := charts.NewHistrogramChart(nil)
+	bardata := make([]float64, 10)
+	for i := range bardata {
+		bardata[i] = rand.Float64() * 10
+	}
+	bar.GetOptions().FillColor = theme.FocusColor()
+	bar.SetData(bardata)
+	grid.Add(bar)
+
+	go func() {
+		for range time.Tick(700 * time.Millisecond) {
+			bardata = append(bardata[1:], rand.Float64()*10)
+			bar.SetData(bardata)
+		}
+	}()
 
 	md := widget.NewLabel(`
 >> Graphs Demo
