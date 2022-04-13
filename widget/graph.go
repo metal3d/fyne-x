@@ -180,7 +180,6 @@ func (g *Graph) Refresh() {
 func (g *Graph) Resize(size fyne.Size) {
 	g.BaseWidget.Resize(size)
 	if g.canvas != nil {
-		//g.canvas.Resize(size)
 		g.canvas.Resize(size)
 		g.image.Resize(size)
 		g.overlay.Resize(size)
@@ -217,8 +216,8 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	// <!> Force the width and height to be the same as the image size
 	// To not do this will cause the graph to be scaled down.
 	// TODO: why is this needed?
-	//w = int(g.image.Size().Width)
-	//h = int(g.image.Size().Height)
+	w = int(g.image.Size().Width)
+	h = int(g.image.Size().Height)
 
 	// prepare points
 	points := make([][2]float32, len(g.data)+2)

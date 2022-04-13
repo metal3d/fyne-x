@@ -24,6 +24,19 @@ func createGraphWithOptions() *Graph {
 	})
 }
 
+func makeRasterize(win fyne.Window, graph *Graph) image.Image {
+	win.Resize(fyne.NewSize(500, 300))
+	img := graph.rasterize(int(graph.Size().Width), int(graph.Size().Height))
+	return img
+}
+
+func assertSize(t *testing.T, img image.Image, graph *Graph) {
+	assert.Greater(t, img.Bounds().Size().X, 0)
+	assert.Greater(t, img.Bounds().Size().Y, 0)
+	assert.Equal(t, img.Bounds().Size().X, int(graph.Size().Width))
+	assert.Equal(t, img.Bounds().Size().Y, int(graph.Size().Height))
+}
+
 func TestGraph_Creation(t *testing.T) {
 	graph := createGraph()
 
@@ -67,18 +80,17 @@ func TestGraph_Rasterizer(t *testing.T) {
 	graph := createGraph()
 	data := []float32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	graph.SetData(data)
-
 	win := test.NewWindow(graph)
-	win.Resize(fyne.NewSize(500, 300))
+	win.Resize(fyne.NewSize(50, 70))
 	defer win.Close()
 
-	img := graph.rasterize(200, 400)
-	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
-
 	graph = createGraphWithOptions()
+	graph.Resize(fyne.NewSize(50, 70))
 	graph.SetData(data)
-	img = graph.rasterize(200, 400)
-	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
+	img := makeRasterize(win, graph)
+
+	assertSize(t, img, graph)
+
 }
 
 func TestGraph_RasterizerWithNegative(t *testing.T) {
@@ -90,15 +102,17 @@ func TestGraph_RasterizerWithNegative(t *testing.T) {
 	win.Resize(fyne.NewSize(500, 300))
 	defer win.Close()
 
-	img := graph.rasterize(200, 400)
-	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
+	graph.Resize(fyne.NewSize(500, 300))
+
+	img := makeRasterize(win, graph)
+	assertSize(t, img, graph)
 
 	graph = createGraphWithOptions()
 	data = []float32{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4}
 	graph.SetData(data)
-	img = graph.rasterize(200, 400)
-	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
-
+	graph.Resize(fyne.NewSize(500, 300))
+	img = makeRasterize(win, graph)
+	assertSize(t, img, graph)
 }
 
 func TestGraph_WithNoData(t *testing.T) {
@@ -113,8 +127,8 @@ func TestGraph_WithNoData(t *testing.T) {
 	assert.Equal(t, graph.opts.StrokeWidth, float32(1))
 
 	// call rasterizer
-	img := graph.rasterize(200, 400)
-	assert.Equal(t, img.Bounds().Size(), image.Point{200, 400})
+	img := makeRasterize(win, graph)
+	assertSize(t, img, graph)
 }
 
 func TestGraph_GetOpts(t *testing.T) {
