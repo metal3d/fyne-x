@@ -64,9 +64,17 @@ type Graph struct {
 	opts    *GraphOpts
 	yFix    [2]float32
 
-	OnMouseIn    func(*desktop.MouseEvent)
-	OnMouseOut   func()
+	// OnMouseIn is trigger when the mouse enters the widget.
+	OnMouseIn func(*desktop.MouseEvent)
+
+	// OnMouseOut is trigger when the mouse exits the widget.
+	OnMouseOut func()
+
+	// OnMouseMove is trigger when the mouse moves over the widget.
 	OnMouseMoved func(*desktop.MouseEvent)
+
+	// OnMouseUp is trigger when the mouse button is clicked or tapped on mobile device.
+	OnTapped func(*fyne.PointEvent)
 }
 
 // NewGraph creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
@@ -132,10 +140,13 @@ func (g *Graph) GetDataPosAt(pos fyne.Position) (float32, fyne.Position) {
 	stepX := g.image.Size().Width / float32(len(g.data))
 	// get the X value corresponding to the data index
 	x := int(pos.X / g.image.Size().Width * float32(len(g.data)))
+	if x < 0 || x >= len(g.data) {
+		return 0, fyne.NewPos(0, 0)
+	}
 	value := g.data[int(x)]
 
 	// now, get the Y value corresponding to the data value
-	y := g.image.Size().Height - value*g.yFix[1] + g.yFix[0]*g.yFix[1]
+	y := g.Size().Height - value*g.yFix[1] + g.yFix[0]*g.yFix[1]
 
 	// calculate the X value on the graph
 	xp := float32(x) * stepX
@@ -152,7 +163,7 @@ func (g *Graph) MinSize() fyne.Size {
 	if g.image == nil {
 		return fyne.NewSize(0, 0)
 	}
-	return g.image.MinSize()
+	return g.BaseWidget.MinSize()
 }
 
 // Refresh refreshes the graph.
@@ -279,22 +290,38 @@ func (g *Graph) rasterize(w, h int) image.Image {
 	return rgba
 }
 
+// MouseMoved is called when the mouse is moved over the widget.
+//
 // implements desktop.Hoverable
-
 func (g *Graph) MouseIn(e *desktop.MouseEvent) {
 	if g.OnMouseIn != nil {
 		g.OnMouseIn(e)
 	}
 }
 
+// MouseMoved is called when the mouse is moved over the widget.
+//
+// implements desktop.Hoverable
 func (g *Graph) MouseMoved(e *desktop.MouseEvent) {
 	if g.OnMouseMoved != nil {
 		g.OnMouseMoved(e)
 	}
 }
 
+// MouseOut is called when the mouse is moved out of the widget.
+//
+// implements desktop.Hoverable
 func (g *Graph) MouseOut() {
 	if g.OnMouseOut != nil {
 		g.OnMouseOut()
+	}
+}
+
+// Tapped is called when the widget is tapped or clicked.
+//
+// implements fyne.Tappable
+func (g *Graph) Tapped(e *fyne.PointEvent) {
+	if g.OnTapped != nil {
+		g.OnTapped(e)
 	}
 }
