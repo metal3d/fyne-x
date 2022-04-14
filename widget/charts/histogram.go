@@ -13,29 +13,50 @@ import (
 	"github.com/srwiley/rasterx"
 )
 
+// HistrogramChart or BarChart (alias).
 type HistrogramChart struct {
 	*LineChart // actually it's the same, we only need to change the rasterize method
 }
 
+// BarChart aliased to HistrogramChart
 type BarChart = HistrogramChart
-type HistChartOptions = LineCharthOpts
+
+// BarchartOptions alias to HistChartOptions
 type BarchartOptions = HistChartOptions
 
+// HistChartOptions aliased to LineCharthOpts
+type HistChartOptions = LineCharthOpts
+
+// NewHistrogramChart returns a HistrogramChart.
 func NewHistrogramChart(opts *HistChartOptions) *HistrogramChart {
 	hist := new(HistrogramChart)
 	hist.LineChart = NewLineChart(opts)
 	return hist
 }
 
+// NewBarChart returns a new BarChart - it's an alias of NewHistrogramChart.
+func NewBarChart(opts *BarchartOptions) *BarChart {
+	return NewHistrogramChart(opts)
+}
+
+// CreateRenderer creates a simple renderer
 func (hist *HistrogramChart) CreateRenderer() fyne.WidgetRenderer {
 	w := hist.LineChart.CreateRenderer()
-	hist.LineChart.image = canvas.NewRaster(hist.rasterize)
-	hist.LineChart.canvas = container.NewWithoutLayout(hist.LineChart.image, hist.LineChart.overlay)
+	hist.LineChart.image = canvas.NewRaster(hist.rasterize) // force the HistrogramChart rasterizer
+
+	// recreate the container
+	hist.LineChart.canvas = container.NewWithoutLayout(
+		hist.LineChart.image,
+		hist.LineChart.overlay,
+	)
+
+	// change the first object, leave the "overlay" in place
 	w.Objects()[0] = hist.LineChart.canvas
 
 	return w
 }
 
+// rasterize is called by the "image" Raster object.
 func (hist *HistrogramChart) rasterize(w, h int) image.Image {
 	if hist.canvas == nil || len(hist.data) == 0 {
 		return image.NewAlpha(image.Rect(0, 0, w, h))

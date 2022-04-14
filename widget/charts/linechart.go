@@ -54,16 +54,14 @@ type LineCharthOpts struct {
 
 // LineChart widget provides a plotting widget for data.
 type LineChart struct {
-	widget.BaseWidget
 	graph
-	canvas    *fyne.Container
-	overlay   *fyne.Container
-	data      []float64
-	image     *canvas.Raster
-	locker    sync.Mutex
-	opts      *LineCharthOpts
-	yFix      [2]float64
-	rasterize func(int, int) image.Image
+	canvas  *fyne.Container
+	overlay *fyne.Container
+	data    []float64
+	image   *canvas.Raster
+	locker  sync.Mutex
+	opts    *LineCharthOpts
+	yFix    [2]float64
 }
 
 // NewLineChart creates a new graph widget. The "options" parameter is optional. IF you provide several options, only the first will be used.
@@ -103,7 +101,6 @@ func NewLineChart(options *LineCharthOpts) *LineChart {
 
 // CreateRenderer is a private method to Fyne which links this widget to its renderer.
 func (g *LineChart) CreateRenderer() fyne.WidgetRenderer {
-	g.rasterize = g._rasterize
 	g.image = canvas.NewRaster(g.rasterize)
 	g.overlay = container.NewWithoutLayout()
 	g.canvas = container.NewWithoutLayout(g.image, g.overlay)
@@ -194,14 +191,8 @@ func (g *LineChart) Size() fyne.Size {
 	return g.canvas.Size()
 }
 
-//
-func (g *LineChart) setRasterFunc(f func(int, int) image.Image) {
-	g.rasterize = f
-	g.Refresh()
-}
-
 // This private method is linjed to g.image canvas.Raster property. It uses oksvg and rasterx to render the graph from a SVG template.
-func (g *LineChart) _rasterize(w, h int) image.Image {
+func (g *LineChart) rasterize(w, h int) image.Image {
 
 	g.locker.Lock()
 	defer g.locker.Unlock()

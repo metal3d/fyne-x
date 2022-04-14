@@ -6,17 +6,16 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
 	"github.com/stretchr/testify/assert"
 )
 
-func createGraph() *LineChart {
+func createTestLineChart() *LineChart {
 	return NewLineChart(nil)
 }
 
-func createGraphWithOptions() *LineChart {
+func createTestLineChartWithOptions() *LineChart {
 	return NewLineChart(&LineCharthOpts{
 		StrokeColor: color.RGBA{0x11, 0x22, 0x33, 255},
 		FillColor:   color.RGBA{0x44, 0x55, 0x66, 255},
@@ -37,8 +36,8 @@ func assertSize(t *testing.T, img image.Image, graph *LineChart) {
 	assert.Equal(t, img.Bounds().Size().Y, int(graph.Size().Height))
 }
 
-func TestGraph_Creation(t *testing.T) {
-	graph := createGraph()
+func TestLineChart_Creation(t *testing.T) {
+	graph := createTestLineChart()
 
 	win := test.NewWindow(graph)
 	win.Resize(fyne.NewSize(500, 300))
@@ -57,8 +56,8 @@ func TestGraph_Creation(t *testing.T) {
 	assert.NotEqual(t, graph.image, nil)
 }
 
-func TestGraph_CreationWithOptions(t *testing.T) {
-	graph := createGraphWithOptions()
+func TestLineChart_CreationWithOptions(t *testing.T) {
+	graph := createTestLineChartWithOptions()
 
 	win := test.NewWindow(graph)
 	win.Resize(fyne.NewSize(500, 300))
@@ -76,15 +75,15 @@ func TestGraph_CreationWithOptions(t *testing.T) {
 	assert.NotEqual(t, graph.image, nil)
 }
 
-func TestGraph_Rasterizer(t *testing.T) {
-	graph := createGraph()
+func TestLineChart_Rasterizer(t *testing.T) {
+	graph := createTestLineChart()
 	data := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	graph.SetData(data)
 	win := test.NewWindow(graph)
 	win.Resize(fyne.NewSize(50, 70))
 	defer win.Close()
 
-	graph = createGraphWithOptions()
+	graph = createTestLineChartWithOptions()
 	graph.Resize(fyne.NewSize(50, 70))
 	graph.SetData(data)
 	img := makeRasterize(win, graph)
@@ -93,8 +92,8 @@ func TestGraph_Rasterizer(t *testing.T) {
 
 }
 
-func TestGraph_RasterizerWithNegative(t *testing.T) {
-	graph := createGraph()
+func TestLineChart_RasterizerWithNegative(t *testing.T) {
+	graph := createTestLineChart()
 	data := []float64{-1, -2, -3, -4, -5, -6, -7, -8, -9, -10}
 	graph.SetData(data)
 
@@ -107,7 +106,7 @@ func TestGraph_RasterizerWithNegative(t *testing.T) {
 	img := makeRasterize(win, graph)
 	assertSize(t, img, graph)
 
-	graph = createGraphWithOptions()
+	graph = createTestLineChartWithOptions()
 	data = []float64{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4}
 	graph.SetData(data)
 	graph.Resize(fyne.NewSize(500, 300))
@@ -115,8 +114,8 @@ func TestGraph_RasterizerWithNegative(t *testing.T) {
 	assertSize(t, img, graph)
 }
 
-func TestGraph_WithNoData(t *testing.T) {
-	graph := createGraph()
+func TestLineChart_WithNoData(t *testing.T) {
+	graph := createTestLineChart()
 	win := test.NewWindow(graph)
 	win.Resize(fyne.NewSize(500, 300))
 	defer win.Close()
@@ -131,7 +130,7 @@ func TestGraph_WithNoData(t *testing.T) {
 	assertSize(t, img, graph)
 }
 
-func TestGraph_GetOpts(t *testing.T) {
+func TestLineChart_GetOpts(t *testing.T) {
 	opts := &LineCharthOpts{
 		StrokeColor: color.RGBA{0x11, 0x22, 0x33, 255},
 		FillColor:   color.RGBA{0x44, 0x55, 0x66, 255},
@@ -146,8 +145,8 @@ func TestGraph_GetOpts(t *testing.T) {
 	assert.Equal(t, graph.opts.StrokeWidth, float32(5))
 }
 
-func TestGraph_GetValAndCurvePos(t *testing.T) {
-	graph := createGraph()
+func TestLineChart_GetValAndCurvePos(t *testing.T) {
+	graph := createTestLineChart()
 	win := test.NewWindow(graph)
 	win.Resize(fyne.NewSize(500, 300))
 	defer win.Close()
@@ -164,42 +163,4 @@ func TestGraph_GetValAndCurvePos(t *testing.T) {
 	assert.Equal(t, float64(6), x)
 	assert.Equal(t, float32(250), y.X)
 	assert.Equal(t, float32(120), y.Y)
-}
-
-func TestGraph_Mouse(t *testing.T) {
-	control := 0
-
-	graph := createGraph()
-	graph.OnMouseIn = func(e *desktop.MouseEvent) {
-		control++
-	}
-	graph.OnMouseOut = func() {
-		control++
-	}
-	graph.OnMouseMoved = func(e *desktop.MouseEvent) {
-		control++
-	}
-	graph.OnTapped = func(e *fyne.PointEvent) {
-		control++
-	}
-
-	win := test.NewWindow(graph)
-	win.Resize(fyne.NewSize(500, 300))
-	defer win.Close()
-
-	graph.CreateRenderer()
-	graph.Resize(fyne.NewSize(500, 300))
-
-	data := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	graph.SetData(data)
-	graph.rasterize(500, 300)
-
-	// trigger all mouse events
-	graph.MouseIn(&desktop.MouseEvent{})
-	graph.MouseOut()
-	graph.MouseMoved(&desktop.MouseEvent{})
-	graph.Tapped(&fyne.PointEvent{})
-
-	assert.Equal(t, control, 4)
-
 }
