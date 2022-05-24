@@ -15,34 +15,50 @@ import (
 
 var framedScaleLock = &sync.Mutex{}
 
+// FramedGradient represents a gradient for a framed widget.
 type FramedGradient struct {
-	colors    FramedGradientStep
-	direction FramedGradientDirection
+	ColorSteps FramedGradientStep
+	Direction  FramedGradientDirection
 }
 
+// FramedOptions represents the options for a framed widget. It's a map with the step position (0 to 1) and a color.
 type FramedGradientStep map[float32]color.Color
 
-func NewFramedGradient(colors FramedGradientStep, direction FramedGradientDirection) *FramedGradient {
-	return &FramedGradient{
-		colors:    colors,
-		direction: direction,
-	}
-}
-
+// FramedGradientDirection represents the direction of a gradient.
 type FramedGradientDirection uint8
 
 const (
+	// GradientDirectionTopDown represents a gradient from top to bottom.
 	GradientDirectionTopDown FramedGradientDirection = iota
+	// GradientDirectionBottomUp represents a gradient from bottom to top.
 	GradientDirectionLeftRight
 )
 
+// FramedOptions holds the options for a framed widget.
 type FramedOptions struct {
-	Padding            float32
-	BorderRadius       float32
-	BackgroundColor    color.Color
+	// Padding is the amount of padding to add around the content. If °0, the theme.Padding()
+	// is used
+	Padding float32
+
+	// BorderRadius is the radius of the rounded corners.
+	BorderRadius float32
+
+	// BackgroundColor is the color of the background.
+	BackgroundColor color.Color
+
+	// BackgroundGradient is the gradient of the background. If set, the BackgroundColor is
+	// ignored.
 	BackgroundGradient *FramedGradient
+
+	// StrokeColor is the color of the border. Visible only if the
+	// StrokeWidth is greater than 0. If not set, the theme.ForegroundColor() is used.
+	StrokeColor color.Color
+
+	// StrokeWidth is the width of the border.
+	StrokeWidth float32
 }
 
+// Framed is the widget modifier to frame a canvas. You can change the border radius, stroke width and color, and use gradients in options.
 type Framed struct {
 	widget.BaseWidget
 	content fyne.CanvasObject
@@ -52,6 +68,7 @@ type Framed struct {
 
 var _ fyne.Widget = (*Framed)(nil)
 
+// NewFramed creates a new framed widget. Options can be nil.
 func NewFramed(content fyne.CanvasObject, options *FramedOptions) *Framed {
 	framed := &Framed{
 		content: content,
@@ -65,12 +82,12 @@ func NewFramed(content fyne.CanvasObject, options *FramedOptions) *Framed {
 		options.BackgroundColor = theme.DisabledButtonColor()
 	}
 
-	if options.BorderRadius == 0 {
-		options.BorderRadius = theme.Padding() * 2
-	}
-
 	if options.Padding == 0 {
 		options.Padding = theme.Padding()
+	}
+
+	if options.StrokeColor == nil {
+		options.StrokeColor = theme.ForegroundColor()
 	}
 
 	// respect scale
@@ -82,6 +99,9 @@ func NewFramed(content fyne.CanvasObject, options *FramedOptions) *Framed {
 	return framed
 }
 
+// CreateRenderer is a private method to Fyne which links this widget to its renderer
+//
+// Implements: fyne.Widget
 func (framed *Framed) CreateRenderer() fyne.WidgetRenderer {
 	return newFramedWidgetRenderer(framed)
 }
@@ -111,8 +131,8 @@ func (r *framedWidgetRenderer) Destroy() {}
 func (r *framedWidgetRenderer) Layout(s fyne.Size) {
 	r.container.Resize(s)
 	r.framed.content.Resize(s.Subtract(fyne.NewSize(
-		r.framed.options.BorderRadius*r.scaling(),
-		r.framed.options.BorderRadius*r.scaling(),
+		r.framed.options.BorderRadius*r.scaling()+theme.Padding()/2,
+		r.framed.options.BorderRadius*r.scaling()+theme.Padding()*2,
 	)))
 	r.framed.content.Move(fyne.NewPos(
 		r.framed.options.BorderRadius*r.scaling()/2,
@@ -142,11 +162,10 @@ func (r *framedWidgetRenderer) Refresh() {
 func (r *framedWidgetRenderer) rasterize(w, h int) image.Image {
 
 	context := gg.NewContext(w, h)
+
 	if r.framed.options.BackgroundGradient != nil {
-
 		var x0, x1, y0, y1 float64
-
-		if r.framed.options.BackgroundGradient.direction == GradientDirectionLeftRight {
+		if r.framed.options.BackgroundGradient.Direction == GradientDirectionLeftRight {
 			x0 = 0
 			x1 = float64(w)
 			y0 = 0
@@ -159,7 +178,7 @@ func (r *framedWidgetRenderer) rasterize(w, h int) image.Image {
 		}
 
 		gradient := gg.NewLinearGradient(x0, y0, x1, y1)
-		for i, color := range r.framed.options.BackgroundGradient.colors {
+		for i, color := range r.framed.options.BackgroundGradient.ColorSteps {
 			gradient.AddColorStop(
 				float64(i),
 				color,
@@ -174,7 +193,14 @@ func (r *framedWidgetRenderer) rasterize(w, h int) image.Image {
 		0, 0, float64(w), float64(h),
 		float64(r.framed.options.BorderRadius*r.scaling()),
 	)
-	context.Fill()
+	// gg is inverted in order
+	context.FillPreserve()
+
+	if r.framed.options.StrokeWidth > 0 {
+		context.SetColor(r.framed.options.StrokeColor)
+		context.SetLineWidth(float64(r.framed.options.StrokeWidth * r.scaling()))
+		context.Stroke()
+	}
 	return context.Image()
 }
 

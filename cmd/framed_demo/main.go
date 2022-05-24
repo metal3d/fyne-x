@@ -19,42 +19,60 @@ func main() {
 	win := app.NewWindow("Framed Demo")
 	win.Resize(fyne.NewSize(800, 600))
 
-	// this create a framed contents
+	// Simple framed, no border radius
 	content := xwidget.NewFramed(createContent(), nil)
-	form := xwidget.NewFramed(createForm(), nil)
+
+	// a more complex frame, here we set a border radius, border color
+	// and gradient background...
+	form := xwidget.NewFramed(createForm(), &xwidget.FramedOptions{
+		BorderRadius: theme.TextSize(),
+		StrokeWidth:  2,
+		StrokeColor:  theme.ForegroundColor(),
+		BackgroundGradient: &xwidget.FramedGradient{
+			ColorSteps: xwidget.FramedGradientStep{
+				0: color.Transparent,
+				1: theme.PrimaryColor(),
+			},
+		},
+	})
 
 	// top box with the label and image + the form
 	topBox := container.NewGridWithColumns(2, content, form)
 
 	// a grid to add random framed blocks
 	frames := container.NewGridWithColumns(2)
+	scrollBox := container.NewVScroll(frames)
+
+	// Buttons to create some frames in the grid
 	count := 0
 	button := widget.NewButton("Add simple Frame", func() {
 		count++
 		frame := createFrame(count, false)
 		frames.Add(frame)
 		frames.Refresh()
+		scrollBox.ScrollToBottom()
 	})
 	graduentButton := widget.NewButton("Add gradient Frame", func() {
 		count++
 		frame := createFrame(count, true)
 		frames.Add(frame)
 		frames.Refresh()
+		scrollBox.ScrollToBottom()
 	})
 
 	// initialize some random frames
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 5; i++ {
 		frame := createFrame(i, i%2 != 0)
 		frames.Add(frame)
 		count = i
 	}
 
 	win.SetContent(container.NewBorder(
-		nil,
+		topBox,
 		container.NewHBox(button, graduentButton),
 		nil,
 		nil,
-		container.NewVBox(topBox, frames),
+		container.NewBorder(nil, nil, nil, nil, scrollBox),
 	))
 
 	win.ShowAndRun()
@@ -75,13 +93,13 @@ func createFrame(i int, gradient bool) fyne.CanvasObject {
 	}
 	if gradient {
 		// create a gradient from top Transparent to bottom background color
-		opts.BackgroundGradient = xwidget.NewFramedGradient(
-			xwidget.FramedGradientStep{
+		opts.BackgroundGradient = &xwidget.FramedGradient{
+			ColorSteps: xwidget.FramedGradientStep{
 				0: color.Transparent,
 				1: c,
 			},
-			xwidget.GradientDirectionTopDown,
-		)
+			Direction: xwidget.GradientDirectionTopDown,
+		}
 	}
 
 	// show an hello world + the background color
@@ -89,8 +107,8 @@ func createFrame(i int, gradient bool) fyne.CanvasObject {
 		"R: " + strconv.Itoa(int(r)) +
 		" G: " + strconv.Itoa(int(g)) +
 		" B: " + strconv.Itoa(int(b)))
-	frame := xwidget.NewFramed(label, opts)
 
+	frame := xwidget.NewFramed(label, opts)
 	return frame
 }
 
