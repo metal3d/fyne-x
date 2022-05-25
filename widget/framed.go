@@ -3,7 +3,6 @@ package widget
 import (
 	"image"
 	"image/color"
-	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -13,12 +12,15 @@ import (
 	"github.com/fogleman/gg"
 )
 
-var framedScaleLock = &sync.Mutex{}
-
 // FramedGradient represents a gradient for a framed widget.
 type FramedGradient struct {
+	// ColorSteps is a list of colors to use for the gradient. It's a map, the key is the "position" and
+	// the value is the color to apply.
 	ColorSteps FramedGradientStep
-	Direction  FramedGradientDirection
+
+	// Direction to apply the gradient. Defaults to GradientDirectionTopDown. Possibles values are:
+	// GradientDirectionTopDown, GradientDirectionLeftRight.
+	Direction FramedGradientDirection
 }
 
 // FramedOptions represents the options for a framed widget. It's a map with the step position (0 to 1) and a color.
@@ -36,11 +38,12 @@ const (
 
 // FramedOptions holds the options for a framed widget.
 type FramedOptions struct {
-	// Padding is the amount of padding to add around the content. If °0, the theme.Padding()
+	// Padding is the amount of padding to add around the content.
 	// is used
 	Padding float32
 
-	// BorderRadius is the radius of the rounded corners.
+	// BorderRadius is the radius of the rounded corners. This apply a padding even if the
+	// Padding is set to 0, this to avoid the content to be clipped.
 	BorderRadius float32
 
 	// BackgroundColor is the color of the background.
@@ -58,7 +61,8 @@ type FramedOptions struct {
 	StrokeWidth float32
 }
 
-// Framed is the widget modifier to frame a canvas. You can change the border radius, stroke width and color, and use gradients in options.
+// Framed is the widget modifier to frame a canvas. You can change the border radius,
+// stroke width and color, and use gradients in options.
 type Framed struct {
 	widget.BaseWidget
 	content fyne.CanvasObject
@@ -79,11 +83,7 @@ func NewFramed(content fyne.CanvasObject, options *FramedOptions) *Framed {
 	}
 
 	if options.BackgroundColor == nil {
-		options.BackgroundColor = theme.DisabledButtonColor()
-	}
-
-	if options.Padding == 0 {
-		options.Padding = theme.Padding()
+		options.BackgroundColor = theme.BackgroundColor()
 	}
 
 	if options.StrokeColor == nil {
@@ -116,6 +116,7 @@ type framedWidgetRenderer struct {
 	container fyne.CanvasObject
 }
 
+// newFramedWidgetRenderer creates the renderer for a framed widget.
 func newFramedWidgetRenderer(framed *Framed) fyne.WidgetRenderer {
 	renderer := &framedWidgetRenderer{
 		framed: framed,
@@ -126,8 +127,14 @@ func newFramedWidgetRenderer(framed *Framed) fyne.WidgetRenderer {
 	return renderer
 }
 
+// Destroy is a private method to Fyne which is called when this widget is deleted.
+//
+// Implements: fyne.WidgetRenderer
 func (r *framedWidgetRenderer) Destroy() {}
 
+// Layout is a private method to Fyne which positions this widget and its children.
+//
+// Implements: fyne.WidgetRenderer
 func (r *framedWidgetRenderer) Layout(s fyne.Size) {
 	r.container.Resize(s)
 	r.framed.content.Resize(s.Subtract(fyne.NewSize(
@@ -140,6 +147,9 @@ func (r *framedWidgetRenderer) Layout(s fyne.Size) {
 	))
 }
 
+// MinSize is a private method to Fyne which returns the smallest size this widget can shrink to.
+//
+// Implements: fyne.WidgetRenderer
 func (r *framedWidgetRenderer) MinSize() fyne.Size {
 	s := r.framed.content.MinSize()
 
@@ -151,10 +161,16 @@ func (r *framedWidgetRenderer) MinSize() fyne.Size {
 	return s
 }
 
+// Objects is a private method to Fyne which returns this widget's contained objects.
+//
+// Implements: fyne.WidgetRenderer
 func (r *framedWidgetRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{r.container}
 }
 
+// Refresh is a private method to Fyne which updates this widget.
+//
+// Implements: fyne.WidgetRenderer
 func (r *framedWidgetRenderer) Refresh() {
 	r.img.Refresh()
 }
@@ -166,14 +182,8 @@ func (r *framedWidgetRenderer) rasterize(w, h int) image.Image {
 	if r.framed.options.BackgroundGradient != nil {
 		var x0, x1, y0, y1 float64
 		if r.framed.options.BackgroundGradient.Direction == GradientDirectionLeftRight {
-			x0 = 0
 			x1 = float64(w)
-			y0 = 0
-			y1 = 0
 		} else {
-			x0 = 0
-			x1 = 0
-			y0 = 0
 			y1 = float64(h)
 		}
 
@@ -188,18 +198,20 @@ func (r *framedWidgetRenderer) rasterize(w, h int) image.Image {
 	} else {
 		context.SetColor(r.framed.options.BackgroundColor)
 	}
-
+	context.Push()
 	context.DrawRoundedRectangle(
 		0, 0, float64(w), float64(h),
 		float64(r.framed.options.BorderRadius*r.scaling()),
 	)
-	// gg is inverted in order
 	context.FillPreserve()
+	context.Pop()
 
 	if r.framed.options.StrokeWidth > 0 {
+		context.Push()
 		context.SetColor(r.framed.options.StrokeColor)
 		context.SetLineWidth(float64(r.framed.options.StrokeWidth * r.scaling()))
-		context.Stroke()
+		context.StrokePreserve()
+		context.Pop()
 	}
 	return context.Image()
 }
@@ -210,7 +222,5 @@ func (r *framedWidgetRenderer) scaling() float32 {
 		fyne.CurrentApp().Driver().CanvasForObject(r.container) == nil {
 		return 1
 	}
-	framedScaleLock.Lock()
-	defer framedScaleLock.Unlock()
 	return fyne.CurrentApp().Driver().CanvasForObject(r.img).Scale()
 }
