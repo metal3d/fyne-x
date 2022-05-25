@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math/rand"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -27,18 +28,32 @@ func main() {
 	// and gradient background
 	borderColor := theme.PrimaryColor()
 	r, g, b, _ := borderColor.RGBA()
-	borderColor = color.RGBA{uint8(r), uint8(g), uint8(b), 25}
+	borderColor = color.RGBA{uint8(r), uint8(g), uint8(b), 122}
 	form := xwidget.NewFramed(createForm(), &xwidget.FramedOptions{
-		BorderRadius: 24,
-		StrokeWidth:  3,
-		StrokeColor:  theme.ForegroundColor(),
+		BorderRadius: 12,
+		StrokeWidth:  4,
+		StrokeColor:  borderColor,
+		Padding:      theme.Padding() * 2,
 		BackgroundGradient: &xwidget.FramedGradient{
 			ColorSteps: xwidget.FramedGradientStep{
 				0: color.Transparent,
-				1: borderColor,
+				1: theme.PrimaryColor(),
 			},
 		},
 	})
+
+	go func() {
+		time.Sleep(5 * time.Second)
+		opts := form.Options()
+		opts.BackgroundGradient = &xwidget.FramedGradient{
+			ColorSteps: xwidget.FramedGradientStep{
+				0: color.Transparent,
+				1: theme.ErrorColor(),
+			},
+		}
+		form.SetOption(*opts)
+		form.Refresh()
+	}()
 
 	// top box with the label and image + the form
 	topBox := container.NewGridWithColumns(2, content, form)
@@ -94,7 +109,9 @@ func createFrame(i int, gradient bool) fyne.CanvasObject {
 	opts := &xwidget.FramedOptions{
 		BackgroundColor: c,
 		BorderRadius:    24,
+		Padding:         12,
 	}
+	colorInfo := "Color to:"
 	if gradient {
 		// create a gradient from top Transparent to bottom background color
 		opts.BackgroundGradient = &xwidget.FramedGradient{
@@ -104,10 +121,11 @@ func createFrame(i int, gradient bool) fyne.CanvasObject {
 			},
 			Direction: xwidget.GradientDirectionTopDown,
 		}
+		colorInfo = "Gradient to"
 	}
 
 	// show an hello world + the background color
-	label := widget.NewLabel(fmt.Sprintf("Framed label %d\nColor: %+v", i+1, c))
+	label := widget.NewLabel(fmt.Sprintf("Framed label %d\n%s: %+v", i+1, colorInfo, c))
 	label.Wrapping = fyne.TextWrapWord
 
 	frame := xwidget.NewFramed(label, opts)
@@ -116,16 +134,15 @@ func createFrame(i int, gradient bool) fyne.CanvasObject {
 
 // Create a simple container with a label and the Fyne logo.
 func createContent() fyne.CanvasObject {
-	label := widget.NewLabel("This block is in a frame")
+	label := widget.NewLabel("This block is in a frame\nbut there is no option, so the behavior is the same as a normal container")
+	label.Wrapping = fyne.TextWrapWord
+	label.Alignment = fyne.TextAlignCenter
 	logo := theme.FyneLogo()
 	im := canvas.NewImageFromResource(logo)
-	im.FillMode = canvas.ImageFillOriginal
-	im.SetMinSize(fyne.NewSize(80, 80))
+	im.FillMode = canvas.ImageFillContain
+	im.SetMinSize(fyne.NewSize(40, 40))
 
-	return container.NewVBox(
-		label,
-		im,
-	)
+	return container.NewBorder(label, nil, nil, nil, im)
 }
 
 // Create a simple form.

@@ -3,6 +3,7 @@ package widget
 import (
 	"image"
 	"image/color"
+	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -10,6 +11,8 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/fogleman/gg"
+	"github.com/srwiley/rasterx"
+	"golang.org/x/image/math/fixed"
 )
 
 // FramedGradient represents a gradient for a framed widget.
@@ -65,9 +68,10 @@ type FramedOptions struct {
 // stroke width and color, and use gradients in options.
 type Framed struct {
 	widget.BaseWidget
-	content fyne.CanvasObject
-	context *gg.Context
-	options *FramedOptions
+	content  fyne.CanvasObject
+	context  *gg.Context
+	options  *FramedOptions
+	renderer fyne.WidgetRenderer
 }
 
 var _ fyne.Widget = (*Framed)(nil)
@@ -86,12 +90,6 @@ func NewFramed(content fyne.CanvasObject, options *FramedOptions) *Framed {
 		options.BackgroundColor = theme.BackgroundColor()
 	}
 
-	if options.StrokeColor == nil {
-		options.StrokeColor = theme.ForegroundColor()
-	}
-
-	// respect scale
-
 	framed.options = options
 
 	framed.ExtendBaseWidget(framed)
@@ -103,7 +101,31 @@ func NewFramed(content fyne.CanvasObject, options *FramedOptions) *Framed {
 //
 // Implements: fyne.Widget
 func (framed *Framed) CreateRenderer() fyne.WidgetRenderer {
-	return newFramedWidgetRenderer(framed)
+	log.Println("Get Renderer")
+	framed.renderer = newFramedWidgetRenderer(framed)
+	return framed.renderer
+}
+
+func (framed *Framed) Options() *FramedOptions {
+	if framed.options == nil {
+		framed.options = new(FramedOptions)
+	}
+	return framed.options
+}
+
+// SetOption set the frame option. You need to Refresh() to apply the changes.
+func (framed *Framed) SetOption(opts FramedOptions) {
+	framed.options = &opts
+}
+
+func (framed *Framed) Refresh() {
+	if framed.content == nil {
+		return
+	}
+	framed.content.Refresh()
+	if framed.renderer != nil {
+		framed.renderer.Refresh()
+	}
 }
 
 // ------
@@ -137,14 +159,15 @@ func (r *framedWidgetRenderer) Destroy() {}
 // Implements: fyne.WidgetRenderer
 func (r *framedWidgetRenderer) Layout(s fyne.Size) {
 	r.container.Resize(s)
-	r.framed.content.Resize(s.Subtract(fyne.NewSize(
-		r.framed.options.BorderRadius*r.scaling()+theme.Padding()/2,
-		r.framed.options.BorderRadius*r.scaling()+theme.Padding()*2,
-	)))
+
+	sub := (r.framed.options.StrokeWidth + r.framed.options.Padding) * 2
+	r.framed.content.Resize(s.Subtract(fyne.NewSize(sub, sub)))
+
+	pad := r.framed.options.Padding + r.framed.options.StrokeWidth
 	r.framed.content.Move(fyne.NewPos(
-		r.framed.options.BorderRadius*r.scaling()/2,
-		r.framed.options.BorderRadius*r.scaling()/2,
+		pad, pad,
 	))
+
 }
 
 // MinSize is a private method to Fyne which returns the smallest size this widget can shrink to.
@@ -152,12 +175,10 @@ func (r *framedWidgetRenderer) Layout(s fyne.Size) {
 // Implements: fyne.WidgetRenderer
 func (r *framedWidgetRenderer) MinSize() fyne.Size {
 	s := r.framed.content.MinSize()
-
+	pad := (r.framed.options.Padding + r.framed.options.StrokeWidth) * 2
 	s = s.Add(fyne.NewSize(
-		r.framed.options.BorderRadius*r.scaling(),
-		r.framed.options.BorderRadius*r.scaling(),
+		pad, pad,
 	))
-
 	return s
 }
 
@@ -172,48 +193,92 @@ func (r *framedWidgetRenderer) Objects() []fyne.CanvasObject {
 //
 // Implements: fyne.WidgetRenderer
 func (r *framedWidgetRenderer) Refresh() {
+	r.framed.content.Refresh()
 	r.img.Refresh()
 }
 
 func (r *framedWidgetRenderer) rasterize(w, h int) image.Image {
 
-	context := gg.NewContext(w, h)
+	// scale the radius
+	radius := float64(r.framed.options.BorderRadius * r.scaling())
+
+	// Create a new context to draw
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	scanner := rasterx.NewScannerGV(w, h, img, img.Bounds())
+
+	// create a filler to fill the background
+	filler := rasterx.NewFiller(w, h, scanner)
 
 	if r.framed.options.BackgroundGradient != nil {
-		var x0, x1, y0, y1 float64
+		// Direction
+		var points [5]float64
 		if r.framed.options.BackgroundGradient.Direction == GradientDirectionLeftRight {
-			x1 = float64(w)
+			points[2] = 1
 		} else {
-			y1 = float64(h)
+			points[3] = 1
 		}
 
-		gradient := gg.NewLinearGradient(x0, y0, x1, y1)
-		for i, color := range r.framed.options.BackgroundGradient.ColorSteps {
-			gradient.AddColorStop(
-				float64(i),
-				color,
-			)
+		// create the gradient
+		gradient := rasterx.Gradient{
+			Points:   points,
+			IsRadial: false,
+			Bounds: struct {
+				X float64
+				Y float64
+				W float64
+				H float64
+			}{
+				X: 0,
+				Y: 0,
+				W: float64(w),
+				H: float64(h),
+			},
+			Matrix: rasterx.Identity,
 		}
-		context.SetFillStyle(gradient)
+		// add color stops
+		for offset, col := range r.framed.options.BackgroundGradient.ColorSteps {
+			_, _, _, alpha := col.RGBA()
+			gradient.Stops = append(gradient.Stops, rasterx.GradStop{
+				Offset:    float64(offset),
+				StopColor: col,
+				Opacity:   float64(alpha&0xff) / 255.0,
+			})
+		}
+		filler.SetColor(gradient.GetColorFunction(1))
 	} else {
-		context.SetColor(r.framed.options.BackgroundColor)
+		filler.SetColor(r.framed.options.BackgroundColor)
 	}
-	context.Push()
-	context.DrawRoundedRectangle(
-		0, 0, float64(w), float64(h),
-		float64(r.framed.options.BorderRadius*r.scaling()),
-	)
-	context.FillPreserve()
-	context.Pop()
+
+	// make a rounder corder with radiu
+	strokeWidth := float64(r.framed.options.StrokeWidth*r.scaling()) / 2
+	rasterx.AddRoundRect(
+		strokeWidth, strokeWidth,
+		float64(w)-strokeWidth, float64(h)-strokeWidth,
+		radius, radius, 0,
+		rasterx.QuadraticGap, filler)
+	filler.Draw()
 
 	if r.framed.options.StrokeWidth > 0 {
-		context.Push()
-		context.SetColor(r.framed.options.StrokeColor)
-		context.SetLineWidth(float64(r.framed.options.StrokeWidth * r.scaling()))
-		context.StrokePreserve()
-		context.Pop()
+		// create a stroker and stroke the border
+		stroker := rasterx.NewStroker(w, h, scanner)
+		stroker.SetColor(r.framed.options.StrokeColor)
+		linewidth := float64(r.framed.options.StrokeWidth)
+		stroker.SetStroke(
+			fixed.Int26_6(linewidth*64*float64(r.scaling())),
+			fixed.Int26_6(4*64*r.scaling()),
+			nil,
+			nil,
+			nil,
+			rasterx.ArcClip)
+		rasterx.AddRoundRect(
+			linewidth/2, linewidth/2,
+			float64(w)-linewidth/2, float64(h)-linewidth/2,
+			radius, radius, 0,
+			rasterx.QuadraticGap, stroker)
+		stroker.Draw()
 	}
-	return context.Image()
+
+	return img
 }
 
 func (r *framedWidgetRenderer) scaling() float32 {
