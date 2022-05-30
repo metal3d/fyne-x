@@ -3,7 +3,6 @@ package widget
 import (
 	"image"
 	"image/color"
-	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -101,7 +100,6 @@ func NewFramed(content fyne.CanvasObject, options *FramedOptions) *Framed {
 //
 // Implements: fyne.Widget
 func (framed *Framed) CreateRenderer() fyne.WidgetRenderer {
-	log.Println("Get Renderer")
 	framed.renderer = newFramedWidgetRenderer(framed)
 	return framed.renderer
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image/color"
 	"math/rand"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -26,13 +25,10 @@ func main() {
 
 	// a more complex frame, here we set a border radius, border color
 	// and gradient background
-	borderColor := theme.PrimaryColor()
-	r, g, b, _ := borderColor.RGBA()
-	borderColor = color.RGBA{uint8(r), uint8(g), uint8(b), 122}
 	form := xwidget.NewFramed(createForm(), &xwidget.FramedOptions{
 		BorderRadius: 12,
 		StrokeWidth:  4,
-		StrokeColor:  borderColor,
+		StrokeColor:  theme.PrimaryColor(),
 		Padding:      theme.Padding() * 2,
 		BackgroundGradient: &xwidget.FramedGradient{
 			ColorSteps: xwidget.FramedGradientStep{
@@ -41,19 +37,6 @@ func main() {
 			},
 		},
 	})
-
-	go func() {
-		time.Sleep(5 * time.Second)
-		opts := form.Options()
-		opts.BackgroundGradient = &xwidget.FramedGradient{
-			ColorSteps: xwidget.FramedGradientStep{
-				0: color.Transparent,
-				1: theme.ErrorColor(),
-			},
-		}
-		form.SetOption(*opts)
-		form.Refresh()
-	}()
 
 	// top box with the label and image + the form
 	topBox := container.NewGridWithColumns(2, content, form)
