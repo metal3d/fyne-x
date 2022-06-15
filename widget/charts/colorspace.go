@@ -3,6 +3,7 @@ package charts
 // taken from https://github.com/hsluv/hsluv-go
 // http://www.hsluv.org.
 // License: MIT
+// Moficiations done: remove useless code, code styling, doc comment
 
 import (
 	"fmt"
@@ -11,54 +12,66 @@ import (
 	"strings"
 )
 
+// HsluvToHex converts a Hsluv color to a hex color.
 func HsluvToHex(h, s, l float64) string {
 	return convRgbHex(convHsluvRgb(h, s, l))
 }
 
+// HsluvToRGB converts a Hsluv color to a RGB color.
 func HsluvToRGB(h, s, l float64) (float64, float64, float64) {
 	return convHsluvRgb(h, s, l)
 }
 
+// HsluvFromHex converts a hex color to a Hsluv color.
 func HsluvFromHex(hex string) (float64, float64, float64) {
 	return convRgbHsluv(convHexRgb(hex))
 }
 
+// HsluvFromRGB converts a RGB color to a Hsluv color.
 func HsluvFromRGB(r, g, b float64) (float64, float64, float64) {
 	return convRgbHsluv(r, g, b)
 }
 
+// HpluvToHex converts a Hpluv color to a hex color.
 func HpluvToHex(h, s, l float64) string {
 	return convRgbHex(convXyzRgb(convLuvXyz(convLchLuv(convHpluvLch(h, s, l)))))
 }
 
+// HpluvToRGB converts a Hpluv color to a RGB color.
 func HpluvToRGB(h, s, l float64) (float64, float64, float64) {
 	return convXyzRgb(convLuvXyz(convLchLuv(convHpluvLch(h, s, l))))
 }
 
+// HpluvFromHex converts a hex color to a Hpluv color.
 func HpluvFromHex(hex string) (float64, float64, float64) {
 	return convLchHpluv(convLuvLch(convXyzLuv(convRgbXyz(convHexRgb(hex)))))
 }
 
+// HpluvFromRGB converts a RGB color to a Hpluv color.
 func HpluvFromRGB(r, g, b float64) (float64, float64, float64) {
 	return convLchHpluv(convLuvLch(convXyzLuv(convRgbXyz(r, g, b))))
 }
 
-var m = [3][3]float64{
-	{3.2409699419045214, -1.5373831775700935, -0.49861076029300328},
-	{-0.96924363628087983, 1.8759675015077207, 0.041555057407175613},
-	{0.055630079696993609, -0.20397695888897657, 1.0569715142428786},
-}
+var (
+	m = [3][3]float64{
+		{3.2409699419045214, -1.5373831775700935, -0.49861076029300328},
+		{-0.96924363628087983, 1.8759675015077207, 0.041555057407175613},
+		{0.055630079696993609, -0.20397695888897657, 1.0569715142428786},
+	}
 
-var m_inv = [3][3]float64{
-	{0.41239079926595948, 0.35758433938387796, 0.18048078840183429},
-	{0.21263900587151036, 0.71516867876775593, 0.072192315360733715},
-	{0.019330818715591851, 0.11919477979462599, 0.95053215224966058},
-}
+	m_inv = [3][3]float64{
+		{0.41239079926595948, 0.35758433938387796, 0.18048078840183429},
+		{0.21263900587151036, 0.71516867876775593, 0.072192315360733715},
+		{0.019330818715591851, 0.11919477979462599, 0.95053215224966058},
+	}
+)
 
-const refU = 0.19783000664283681
-const refV = 0.468319994938791
-const kappa = 903.2962962962963
-const epsilon = 0.0088564516790356308
+const (
+	refU    = 0.19783000664283681
+	refV    = 0.468319994938791
+	kappa   = 903.2962962962963
+	epsilon = 0.0088564516790356308
+)
 
 func convLchRgb(l, c, h float64) (float64, float64, float64) {
 	return convXyzRgb(convLuvXyz(convLchLuv(l, c, h)))
