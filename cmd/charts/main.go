@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 	"math/rand"
@@ -30,8 +31,8 @@ func main() {
 	}
 
 	line := charts.NewChart(charts.Line, &charts.Options{
-		LineWidth: 2,
-		//BackgroundColor: color.RGBA{0x00, 0x00, 0x33, 0x00},
+		LineWidth:       2,
+		BackgroundColor: color.RGBA{0x00, 0x00, 0x33, 0x00},
 	})
 	line.Plot(data)
 
@@ -41,7 +42,8 @@ func main() {
 	pie := charts.NewChart(charts.Pie, nil)
 	pie.Plot([]float32{30, 20, 55, 34})
 
-	pie2 := charts.NewChart(charts.Pie, &charts.Options{
+	//pie2 := charts.NewChart(charts.Pie, &charts.Options{
+	pie2 := NewMousePie(&charts.Options{
 		Scheme:    charts.AnalogousScheme(color.RGBA{0xAE, 0x44, 0x44, 0x00}),
 		LineWidth: 2,
 	})
@@ -65,7 +67,7 @@ func main() {
 	multiline2.SetData(multidata)
 
 	// a multi bar data
-	multibar := charts.NewChart(charts.Bar, nil)
+	multibar := NewMousePlot(charts.Bar, nil)
 	multibar.Plot([]float32{4, -6, 7, 8, 2, -1, 6})
 	multibar.Plot([]float32{6, -3, 2, 3, 4, -2, 3})
 
@@ -105,11 +107,13 @@ var _ fyne.Widget = (*MousePlot)(nil)
 type MousePlot struct {
 	widget.BaseWidget
 	*charts.Chart
+	kind charts.Type
 }
 
 func NewMousePlot(kind charts.Type, opts *charts.Options) *MousePlot {
 	m := &MousePlot{Chart: charts.NewChart(kind, opts)}
 	m.BaseWidget.ExtendBaseWidget(m)
+	m.kind = kind
 	return m
 }
 
@@ -119,27 +123,70 @@ func (m *MousePlot) Refresh() {
 
 func (m *MousePlot) MouseIn(e *desktop.MouseEvent) {
 	Pause = true
-	log.Println("MouseIn")
 }
 
 func (m *MousePlot) MouseMoved(e *desktop.MouseEvent) {
-	p := m.GetDataAt(e.PointEvent)
-	circles := []fyne.CanvasObject{}
-	for _, p := range p {
-		circle := canvas.NewCircle(color.White)
-		circle.FillColor = color.White
-		circle.Resize(fyne.NewSize(10, 10))
-		circle.Move(p.Position.Add(fyne.NewPos(5, 0)))
-		circles = append(circles, circle)
-	}
-
 	overlay := m.Overlay()
 	if overlay == nil {
 		return
 	}
-	overlay.Objects = circles
-	m.Refresh()
+	points := m.GetDataAt(e.PointEvent)
+	if points == nil {
+		return
+	}
+	draw := []fyne.CanvasObject{}
+	for i, p := range points {
 
+		text := canvas.NewText(fmt.Sprintf("%0.2f", p.Value), m.Options().Scheme[i])
+		text.TextStyle.Bold = true
+
+		var tx, ty float32
+		if m.kind == charts.Line {
+			// for line chart, draw lines that hits the point
+			// at the given pointer poisition
+
+			//make a nice color
+			r, g, b, a := m.Options().Scheme[i].RGBA()
+			a = 0x80
+
+			line := canvas.NewLine(color.NRGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+			line.Position1 = fyne.NewPos(0, p.Position.Y)
+			line.Position2 = fyne.NewPos(m.Size().Width, p.Position.Y)
+			draw = append(draw, line)
+
+			// make the text to not overflow the image
+			text.TextSize = 9
+			s := fyne.MeasureText(text.Text, text.TextSize, text.TextStyle)
+			ty = -s.Height / 2
+			tx = 5
+			if p.Position.X > m.Size().Width/2 {
+				tx = -s.Width - tx
+			}
+		} else {
+			// for bar chart, draw the text inside the bar
+			text.TextSize = 7
+			s := fyne.MeasureText(text.Text, text.TextSize, text.TextStyle)
+			tx = -s.Width / 2
+			if p.Value < 0 {
+				ty = -s.Height
+			}
+		}
+		text.Move(p.Position.Add(fyne.NewPos(tx, ty)))
+		draw = append(draw, text)
+	}
+
+	if m.kind == charts.Line {
+		// a vertical line to mark the mouse position on line charts. We only use the
+		// first point to know the position.
+		col := color.NRGBA{0xff, 0xff, 0xff, 0x88}
+		vline := canvas.NewLine(col)
+		vline.Position1 = fyne.NewPos(points[0].Position.X, 0)
+		vline.Position2 = fyne.NewPos(points[0].Position.X, m.Size().Height)
+		draw = append(draw, vline)
+	}
+
+	overlay.Objects = draw
+	m.Refresh()
 }
 
 func (m *MousePlot) MouseOut() {
@@ -150,4 +197,55 @@ func (m *MousePlot) MouseOut() {
 	}
 	overlay.Objects = []fyne.CanvasObject{}
 	m.Refresh()
+}
+
+var _ desktop.Hoverable = (*MousePie)(nil)
+var _ fyne.Widget = (*MousePie)(nil)
+
+type MousePie struct {
+	widget.BaseWidget
+	*charts.Chart
+}
+
+func NewMousePie(opts *charts.Options) *MousePie {
+	m := &MousePie{Chart: charts.NewChart(charts.Pie, opts)}
+	m.BaseWidget.ExtendBaseWidget(m)
+	return m
+}
+
+func (m *MousePie) Refresh() {
+	m.Chart.Refresh()
+}
+
+func (m *MousePie) MouseIn(e *desktop.MouseEvent) {
+	log.Println("MouseIn")
+}
+
+func (m *MousePie) MouseMoved(e *desktop.MouseEvent) {
+	overlay := m.Overlay()
+	if overlay == nil {
+		return
+	}
+	points := m.GetDataAt(e.PointEvent)
+	if len(points) == 0 {
+		overlay.Objects = []fyne.CanvasObject{}
+		return
+	}
+
+	p := points[0]
+	text := canvas.NewText(fmt.Sprintf("%0.1f%%", p.Value), color.Black)
+	text.TextSize = 9
+	s := fyne.MeasureText(text.Text, text.TextSize, text.TextStyle)
+	text.Move(p.Position.Subtract(fyne.NewPos(s.Width/2, s.Height)))
+	overlay.Objects = []fyne.CanvasObject{text}
+	m.Refresh()
+
+}
+
+func (m *MousePie) MouseOut() {
+	overlay := m.Overlay()
+	if overlay == nil {
+		return
+	}
+	overlay.Objects = []fyne.CanvasObject{}
 }

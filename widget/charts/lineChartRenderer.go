@@ -24,26 +24,38 @@ type lineChartRenderer struct {
 
 func newLineChartRenderer(p *Chart) *lineChartRenderer {
 	l := &lineChartRenderer{
-		chart: p,
+		chart:   p,
+		overlay: container.NewWithoutLayout(),
 	}
-	l.overlay = container.NewWithoutLayout()
 	l.image = canvas.NewRaster(l.raster)
 	return l
 }
 
+// AtPointer return a data "Point" priving position and value of each point
+// closed to the given pos.
 func (l *lineChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
 	l.chart.locker.Lock()
 	defer l.chart.locker.Unlock()
 
 	points := make([]Point, len(l.chart.data))
 	w := l.image.Size().Width
+	h := l.image.Size().Height
+
+	zeroY, scale := globalZeroAxisY(
+		l.chart,
+		image.Rect(0, 0, int(w), int(h)),
+	)
 
 	for i, d := range l.chart.data {
-		step := w / float32(len(d))
+		step := float32(w) / float32(len(d)-1)
 		x := int(pos.Position.X / step)
+		y := zeroY - float64(d[x])*scale
 		points[i] = Point{
-			Position: fyne.Position{X: float32(x) * step, Y: pos.Position.Y},
-			Value:    d[x],
+			Position: fyne.Position{
+				X: (float32(x) * step),
+				Y: float32(y),
+			},
+			Value: d[x],
 		}
 	}
 

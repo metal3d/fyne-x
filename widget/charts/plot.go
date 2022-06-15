@@ -9,9 +9,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-var _ fyne.Widget = (*Chart)(nil)
-var _ fyne.CanvasObject = (*Chart)(nil)
-
 // Type defines the kind of plot (pie, bar, line...).
 type Type uint8
 
@@ -24,6 +21,9 @@ const (
 	Pie
 )
 
+var _ fyne.Widget = (*Chart)(nil)
+var _ fyne.CanvasObject = (*Chart)(nil)
+
 // Chart holds data and internal properties to draw a chart.
 type Chart struct {
 	widget.BaseWidget
@@ -32,9 +32,11 @@ type Chart struct {
 	options  *Options
 	locker   *sync.Mutex
 	renderer fyne.WidgetRenderer
+	Debug    bool
 }
 
-// NewChart creates a new plot. "kind" defines the kind of plot (pie, bar, line...). Options can be nil.
+// NewChart creates a new plot. "kind" defines the kind of plot (pie, bar, line...).
+// Options can be nil.
 func NewChart(kind Type, options *Options) *Chart {
 	plot := &Chart{
 		kind:   kind,
@@ -101,6 +103,12 @@ func (plot *Chart) GetDataAt(pe fyne.PointEvent) []Point {
 	return nil
 }
 
+// Options returns the options of the chart.
+func (plot *Chart) Options() *Options {
+	return plot.options
+}
+
+// Overlay returns the overlay container of the chart.
 func (plot *Chart) Overlay() *fyne.Container {
 	if o, ok := plot.renderer.(Overlayable); ok {
 		return o.Overlay()
@@ -108,8 +116,8 @@ func (plot *Chart) Overlay() *fyne.Container {
 	return nil
 }
 
-// SetData set all the data for the chart. Because line and bar charts can stack several data lines, the data is a
-// 2 dimensional slice.
+// SetData set all the data for the chart. Because line and bar charts can stack
+// several data lines, the data is a 2 dimensional slice.
 func (plot *Chart) SetData(data [][]float32) {
 	plot.locker.Lock()
 	defer plot.locker.Unlock()
@@ -122,7 +130,7 @@ func (plot *Chart) SetData(data [][]float32) {
 func (plot *Chart) Plot(data []float32) {
 	plot.locker.Lock()
 	defer plot.locker.Unlock()
-	if data != nil && len(data) >= 0 {
+	if data != nil && len(data) > 0 {
 		plot.data = append(plot.data, data)
 	}
 	plot.Refresh()

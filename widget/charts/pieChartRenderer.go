@@ -7,23 +7,52 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"github.com/srwiley/rasterx"
 	"golang.org/x/image/math/fixed"
 )
 
 var _ fyne.WidgetRenderer = (*pieChartRenderer)(nil)
+var _ Pointable = (*pieChartRenderer)(nil)
+var _ Overlayable = (*pieChartRenderer)(nil)
 
 type pieChartRenderer struct {
-	chart *Chart
-	image *canvas.Raster
+	chart   *Chart
+	image   *canvas.Raster
+	overlay *fyne.Container
 }
 
 func newPieChartRenderer(chart *Chart) *pieChartRenderer {
-	p := &pieChartRenderer{chart: chart}
+	p := &pieChartRenderer{
+		chart:   chart,
+		overlay: container.NewWithoutLayout(),
+	}
 
 	p.image = canvas.NewRaster(p.raster)
 
 	return p
+}
+
+func (p *pieChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
+	data := p.chart.data[0] // only one series is possible with pie chart
+	total := p.sum(data)
+	point := Point{}
+	w := p.image.Size().Width
+	h := p.image.Size().Height
+	center := fyne.NewPos(w/2, h/2)
+	r := (math.Min(float64(w), float64(h)) / 2) - float64(p.chart.options.LineWidth)*2
+	currAngle := 0.0
+	for _, d := range data {
+		angle := p.getAngle(total, d)
+		y := h - pos.Position.Y
+		if p.pointInSector(r, center, fyne.NewPos(pos.Position.X, y), angle, currAngle) {
+			point.Value = d
+			point.Position = pos.Position
+			return []Point{point}
+		}
+		currAngle += angle
+	}
+	return []Point{}
 }
 
 func (pieChartRenderer) Destroy() {}
@@ -41,7 +70,11 @@ func (p *pieChartRenderer) Refresh() {
 }
 
 func (p *pieChartRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{p.image}
+	return []fyne.CanvasObject{p.image, p.overlay}
+}
+
+func (p *pieChartRenderer) Overlay() *fyne.Container {
+	return p.overlay
 }
 
 func (p *pieChartRenderer) raster(w, h int) image.Image {
@@ -120,4 +153,19 @@ func (*pieChartRenderer) piePart(cx, cy, fx, fy, r, angle float64, ra rasterx.Ad
 	ra.(rasterx.Scanner).Clear()
 
 	return px, py
+}
+
+func (p *pieChartRenderer) pointInSector(radius float64, center, pos fyne.Position, dataAngle, startAngle float64) bool {
+	x, y := float64(pos.X-center.X), float64(pos.Y-center.Y)
+	endAngle := startAngle + dataAngle
+	polarRadius := math.Sqrt(x*x + y*y)
+
+	// angle should be in range [0, 2*pi]
+	angle := math.Atan2(y, x) * 360 / (2 * math.Pi)
+	angle = -(angle - 90)
+	if angle < 0 {
+		angle += 360
+	}
+
+	return angle >= startAngle && angle <= endAngle && polarRadius < radius
 }
