@@ -177,7 +177,7 @@ func convRgbHex(r, g, b float64) (hex string) {
 
 func convHexRgb(hex string) (r float64, g float64, b float64) {
 	if strings.HasPrefix(hex, "#") {
-		hex = hex[1:len(hex)]
+		hex = hex[1:]
 	}
 	rV, err := strconv.ParseInt(hex[0:2], 16, 0)
 	gV, err := strconv.ParseInt(hex[2:4], 16, 0)
