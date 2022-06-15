@@ -6,35 +6,69 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"github.com/srwiley/rasterx"
 	"golang.org/x/image/math/fixed"
 )
 
 var _ fyne.WidgetRenderer = (*lineChartRenderer)(nil)
+var _ Pointable = (*lineChartRenderer)(nil)
+var _ Rasterizer = (*lineChartRenderer)(nil)
+var _ Overlayable = (*lineChartRenderer)(nil)
 
 type lineChartRenderer struct {
-	chart *Plot
-	image *canvas.Raster
+	chart   *Chart
+	image   *canvas.Raster
+	overlay *fyne.Container
 }
 
-func newLineChartRenderer(p *Plot) fyne.WidgetRenderer {
+func newLineChartRenderer(p *Chart) *lineChartRenderer {
 	l := &lineChartRenderer{
 		chart: p,
 	}
+	l.overlay = container.NewWithoutLayout()
 	l.image = canvas.NewRaster(l.raster)
 	return l
 }
 
+func (l *lineChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
+	l.chart.locker.Lock()
+	defer l.chart.locker.Unlock()
+
+	points := make([]Point, len(l.chart.data))
+	w := l.image.Size().Width
+
+	for i, d := range l.chart.data {
+		step := w / float32(len(d))
+		x := int(pos.Position.X / step)
+		points[i] = Point{
+			Position: fyne.Position{X: float32(x) * step, Y: pos.Position.Y},
+			Value:    d[x],
+		}
+	}
+
+	return points
+}
+
 func (l *lineChartRenderer) Destroy() {}
+
 func (l *lineChartRenderer) Layout(size fyne.Size) {
+	l.overlay.Resize(size)
 	l.image.Resize(size)
 }
+
 func (l *lineChartRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(1, 1)
+	return l.image.MinSize()
 }
+
 func (l *lineChartRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{l.image}
+	return []fyne.CanvasObject{l.image, l.overlay}
 }
+
+func (l *lineChartRenderer) Overlay() *fyne.Container {
+	return l.overlay
+}
+
 func (l *lineChartRenderer) Refresh() {
 	l.image.Refresh()
 }
@@ -71,26 +105,28 @@ func (l *lineChartRenderer) raster(w, h int) image.Image {
 
 		lw := float64(lineWidth)
 		y := zeroY - float64(data[0])*scaler
-		if y > zeroY {
-			y -= lw
-		} else if y < zeroY {
-			y += lw
-		}
-		fill.Start(rasterx.ToFixedP(-lw*4, zeroY))
-		fill.Line(rasterx.ToFixedP(-lw*4, y))
-		for i, v := range data {
-			y := zeroY - float64(v)*scaler
+		if l.chart.options.BackgroundColor != nil {
 			if y > zeroY {
-				y -= float64(lineWidth)
+				y -= lw
 			} else if y < zeroY {
-				y += float64(lineWidth)
+				y += lw
 			}
-			fill.Line(rasterx.ToFixedP(float64(i)*steps+lw, y))
+			fill.Start(rasterx.ToFixedP(-lw*4, zeroY))
+			fill.Line(rasterx.ToFixedP(-lw*4, y))
+			for i, v := range data {
+				y := zeroY - float64(v)*scaler
+				if y > zeroY {
+					y -= float64(lineWidth)
+				} else if y < zeroY {
+					y += float64(lineWidth)
+				}
+				fill.Line(rasterx.ToFixedP(float64(i)*steps+lw, y))
+			}
+			// back to zeroY
+			fill.Line(rasterx.ToFixedP(float64(w-int(lineWidth*2)), zeroY))
+			fill.Stop(true)
+			fill.Draw()
 		}
-		// back to zeroY
-		fill.Line(rasterx.ToFixedP(float64(w-int(lineWidth*2)), zeroY))
-		fill.Stop(true)
-		fill.Draw()
 
 		// create the liner
 		line := createStroker(scanner)
@@ -135,4 +171,8 @@ func (l *lineChartRenderer) raster(w, h int) image.Image {
 	}
 
 	return scanner.Dest
+}
+
+func (l *lineChartRenderer) Image() *canvas.Raster {
+	return l.image
 }

@@ -14,11 +14,11 @@ import (
 var _ fyne.WidgetRenderer = (*pieChartRenderer)(nil)
 
 type pieChartRenderer struct {
-	chart *Plot
+	chart *Chart
 	image *canvas.Raster
 }
 
-func newPieChartRenderer(chart *Plot) *pieChartRenderer {
+func newPieChartRenderer(chart *Chart) *pieChartRenderer {
 	p := &pieChartRenderer{chart: chart}
 
 	p.image = canvas.NewRaster(p.raster)
@@ -26,12 +26,14 @@ func newPieChartRenderer(chart *Plot) *pieChartRenderer {
 	return p
 }
 
+func (pieChartRenderer) Destroy() {}
+
 func (p *pieChartRenderer) Layout(size fyne.Size) {
 	p.image.Resize(size)
 }
 
-func (pieChartRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(1, 1)
+func (p *pieChartRenderer) MinSize() fyne.Size {
+	return p.image.MinSize()
 }
 
 func (p *pieChartRenderer) Refresh() {
@@ -40,9 +42,6 @@ func (p *pieChartRenderer) Refresh() {
 
 func (p *pieChartRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{p.image}
-}
-
-func (pieChartRenderer) Destroy() {
 }
 
 func (p *pieChartRenderer) raster(w, h int) image.Image {
