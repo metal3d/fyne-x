@@ -11,8 +11,8 @@ type Overlayable interface {
 	Overlay() *fyne.Container
 }
 
-// Point represent a point in the drawn chart.
-type Point struct {
+// DataInfo represent a point in the drawn chart.
+type DataInfo struct {
 	// Value is the "pointed" value
 	Value float32
 	// Position is the position in the chart where the value is drawn.
@@ -24,7 +24,7 @@ type Point struct {
 type Pointable interface {
 	// AtPointer return the entire data set and position in
 	// the chart at the given pointer position.
-	AtPointer(fyne.PointEvent) []Point
+	AtPointer(fyne.PointEvent) []DataInfo
 }
 
 // Rasterizer represents a chart that uses a canvas.Raster to draw the chart.

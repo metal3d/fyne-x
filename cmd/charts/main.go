@@ -11,7 +11,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
-	"fyne.io/fyne/v2/widget"
 	"fyne.io/x/fyne/widget/charts"
 )
 
@@ -104,21 +103,20 @@ var _ desktop.Hoverable = (*MousePlot)(nil)
 var _ fyne.Widget = (*MousePlot)(nil)
 
 type MousePlot struct {
-	widget.BaseWidget
-	*charts.Chart
+	charts.Chart
 	kind charts.Type
 }
 
 func NewMousePlot(kind charts.Type, opts *charts.Options) *MousePlot {
-	m := &MousePlot{Chart: charts.NewChart(kind, opts)}
-	m.BaseWidget.ExtendBaseWidget(m)
+	m := &MousePlot{Chart: *charts.NewChart(kind, opts)}
 	m.kind = kind
+	m.Debug = true
 	return m
 }
 
-func (m *MousePlot) Refresh() {
-	m.Chart.Refresh()
-}
+//func (m *MousePlot) Refresh() {
+//	m.Chart.Refresh()
+//}
 
 func (m *MousePlot) MouseIn(e *desktop.MouseEvent) {
 	Pause = true
@@ -202,7 +200,6 @@ var _ desktop.Hoverable = (*MousePie)(nil)
 var _ fyne.Widget = (*MousePie)(nil)
 
 type MousePie struct {
-	widget.BaseWidget
 	*charts.Chart
 }
 

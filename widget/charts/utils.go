@@ -52,18 +52,18 @@ func getMax(data []float32) float32 {
 }
 
 // return the reduction factor to apply to data to draw the bar inside the image
-func scaleData(data []float32, im image.Image) float64 {
+func scaleData(data []float32, imsize fyne.Size) float64 {
 	min := getMin(data)
 	max := getMax(data)
 	h := max - min
-	return float64(im.Bounds().Dy()) / float64(h)
+	return float64(imsize.Height) / float64(h)
 }
 
 // find where to place the X axis on Y of the image. Note that the origin is
 // at the top left corner of the image. We need to start from the bottom left.
-func zeroAxisY(data []float32, im image.Image) float64 {
+func zeroAxisY(data []float32, imsize fyne.Size) float64 {
 	min := float64(getMin(data))
-	return float64(im.Bounds().Dy()) - (-min * scaleData(data, im))
+	return float64(imsize.Height) - (-min * scaleData(data, imsize))
 }
 
 // return the scale factor applied to Fyne window.
@@ -76,12 +76,12 @@ func scaling(o fyne.CanvasObject) float32 {
 }
 
 // find the best zeroY for a complete data set
-func globalZeroAxisY(plot *Chart, im image.Image) (zeroY, scaler float64) {
+func globalZeroAxisY(plot *Chart, imsize fyne.Size) (zeroY, scaler float64) {
 	for _, d := range plot.data {
-		scale := scaleData(d, im)
+		scale := scaleData(d, imsize)
 		if scaler == 0 || scaler > scale {
 			scaler = scale
-			zeroY = zeroAxisY(d, im)
+			zeroY = zeroAxisY(d, imsize)
 		}
 	}
 	return

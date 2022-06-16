@@ -19,10 +19,16 @@ const (
 	Line
 	// Pie is a pie chart.
 	Pie
+	// Scatter is a scatter chart.
+	SCatter
 )
 
 var _ fyne.Widget = (*Chart)(nil)
 var _ fyne.CanvasObject = (*Chart)(nil)
+
+type ScatterData struct {
+	X, Y, Z float32
+}
 
 // Chart holds data and internal properties to draw a chart.
 type Chart struct {
@@ -74,7 +80,7 @@ func NewChart(kind Type, options *Options) *Chart {
 	}
 
 	plot.options = options
-	plot.BaseWidget.ExtendBaseWidget(plot)
+	plot.ExtendBaseWidget(plot)
 	return plot
 }
 
@@ -96,7 +102,7 @@ func (plot *Chart) CreateRenderer() fyne.WidgetRenderer {
 }
 
 // GetYAt returns the value at the given x position.
-func (plot *Chart) GetDataAt(pe fyne.PointEvent) []Point {
+func (plot *Chart) GetDataAt(pe fyne.PointEvent) []DataInfo {
 	if p, ok := plot.renderer.(Pointable); ok {
 		return p.AtPointer(pe)
 	}
@@ -151,3 +157,33 @@ func (plot *Chart) Refresh() {
 		plot.renderer.Refresh()
 	}
 }
+
+func (plot *Chart) Resize(size fyne.Size) {
+	if plot.Debug {
+		log.Println("Chart.Resize", size)
+	}
+	if plot.renderer != nil {
+		for _, o := range plot.renderer.Objects() {
+			o.Resize(size)
+		}
+	}
+}
+
+func (plot *Chart) Size() fyne.Size {
+	if plot.renderer != nil {
+		if o, ok := plot.renderer.(Rasterizer); ok {
+			return o.Image().Size()
+		}
+	}
+	return fyne.Size{}
+}
+
+//func (plot *Chart) MinSize() fyne.Size {
+//	if plot.Debug {
+//		log.Println("Chart.MinSize")
+//	}
+//	if plot.renderer != nil {
+//		return plot.renderer.MinSize()
+//	}
+//	return fyne.NewSize(0, 0)
+//}

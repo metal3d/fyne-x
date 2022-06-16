@@ -15,6 +15,7 @@ import (
 var _ fyne.WidgetRenderer = (*pieChartRenderer)(nil)
 var _ Pointable = (*pieChartRenderer)(nil)
 var _ Overlayable = (*pieChartRenderer)(nil)
+var _ Rasterizer = (*pieChartRenderer)(nil)
 
 type pieChartRenderer struct {
 	chart   *Chart
@@ -33,7 +34,7 @@ func newPieChartRenderer(chart *Chart) *pieChartRenderer {
 	return p
 }
 
-func (p *pieChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
+func (p *pieChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
 	data := p.chart.data[0] // only one series is possible with pie chart
 	total := p.sum(data)
 	w := p.image.Size().Width
@@ -45,7 +46,7 @@ func (p *pieChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
 		angle := p.getAngle(total, d)
 		y := h - pos.Position.Y
 		if p.pointInSector(r, center, fyne.NewPos(pos.Position.X, y), angle, currAngle) {
-			point := Point{}
+			point := DataInfo{}
 			point.Value = d
 
 			// data coord is in the "inner middle" of the pie slice
@@ -57,14 +58,18 @@ func (p *pieChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
 			py := center.Y + float32(r*math.Sin((bisector-90)*math.Pi/180))
 			point.Position = fyne.NewPos(px, py)
 
-			return []Point{point}
+			return []DataInfo{point}
 		}
 		currAngle += angle
 	}
-	return []Point{}
+	return []DataInfo{}
 }
 
 func (pieChartRenderer) Destroy() {}
+
+func (p *pieChartRenderer) Image() *canvas.Raster {
+	return p.image
+}
 
 func (p *pieChartRenderer) Layout(size fyne.Size) {
 	p.image.Resize(size)

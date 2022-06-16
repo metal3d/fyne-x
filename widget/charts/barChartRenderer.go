@@ -13,7 +13,7 @@ import (
 
 var _ fyne.WidgetRenderer = (*barChartRenderer)(nil)
 var _ Pointable = (*barChartRenderer)(nil)
-var _ Rasterizer = (*lineChartRenderer)(nil)
+var _ Rasterizer = (*barChartRenderer)(nil)
 var _ Overlayable = (*barChartRenderer)(nil)
 
 // barChartRenderer renders a bar chart.
@@ -33,16 +33,16 @@ func newBarChartRenderer(p *Chart) fyne.WidgetRenderer {
 	return renderer
 }
 
-func (b *barChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
+func (b *barChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
 	b.chart.locker.Lock()
 	defer b.chart.locker.Unlock()
 
-	points := make([]Point, len(b.chart.data))
+	points := make([]DataInfo, len(b.chart.data))
 	w := b.image.Size().Width
 	h := b.image.Size().Height
 	zeroY, scale := globalZeroAxisY(
 		b.chart,
-		image.Rect(0, 0, int(w), int(h)),
+		fyne.NewSize(w, h),
 	)
 
 	steps := w / float32(largerDataLine(b.chart.data))
@@ -54,7 +54,7 @@ func (b *barChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
 		v := d[x]
 		posx := float32(i)*barWidth + float32(x)*steps + barWidth/2
 		y := float32(zeroY) - v*float32(scale)
-		points[i] = Point{
+		points[i] = DataInfo{
 			Position: fyne.Position{
 				X: posx,
 				Y: y,
@@ -69,6 +69,10 @@ func (b *barChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
 //
 // Implements: fyne.WidgetRenderer
 func (b *barChartRenderer) Destroy() {}
+
+func (b *barChartRenderer) Image() *canvas.Raster {
+	return b.image
+}
 
 // Layout the widget.
 //
@@ -125,7 +129,10 @@ func (b *barChartRenderer) raster(w, h int) image.Image {
 
 	// get the common zeer Y and the reduction factor to make the data
 	// to not overflow the rasterizer
-	zeroY, scaler := globalZeroAxisY(b.chart, scanner.Dest)
+	zeroY, scaler := globalZeroAxisY(b.chart, fyne.NewSize(
+		float32(scanner.Dest.Bounds().Dx()),
+		float32(scanner.Dest.Bounds().Dy()),
+	))
 
 	for index, data := range b.chart.data {
 		filler := createFiller(scanner)

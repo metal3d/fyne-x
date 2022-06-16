@@ -33,24 +33,24 @@ func newLineChartRenderer(p *Chart) *lineChartRenderer {
 
 // AtPointer return a data "Point" priving position and value of each point
 // closed to the given pos.
-func (l *lineChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
+func (l *lineChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
 	l.chart.locker.Lock()
 	defer l.chart.locker.Unlock()
 
-	points := make([]Point, len(l.chart.data))
+	points := make([]DataInfo, len(l.chart.data))
 	w := l.image.Size().Width
 	h := l.image.Size().Height
 
 	zeroY, scale := globalZeroAxisY(
 		l.chart,
-		image.Rect(0, 0, int(w), int(h)),
+		fyne.NewSize(w, h),
 	)
 
 	for i, d := range l.chart.data {
 		step := float32(w) / float32(len(d)-1)
 		x := int(pos.Position.X / step)
 		y := zeroY - float64(d[x])*scale
-		points[i] = Point{
+		points[i] = DataInfo{
 			Position: fyne.Position{
 				X: (float32(x) * step),
 				Y: float32(y),
@@ -99,7 +99,10 @@ func (l *lineChartRenderer) raster(w, h int) image.Image {
 	lineWidth := l.chart.options.LineWidth * scaling(l.image)
 
 	scanner := createScanner(w, h)
-	zeroY, scaler := globalZeroAxisY(l.chart, scanner.Dest)
+	zeroY, scaler := globalZeroAxisY(l.chart, fyne.NewSize(
+		float32(scanner.Dest.Bounds().Dx()),
+		float32(scanner.Dest.Bounds().Dy()),
+	))
 
 	for index, data := range l.chart.data {
 		steps := float64(w-int(lineWidth*2)) / float64(len(data)-1)
