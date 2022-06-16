@@ -36,7 +36,6 @@ func newPieChartRenderer(chart *Chart) *pieChartRenderer {
 func (p *pieChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
 	data := p.chart.data[0] // only one series is possible with pie chart
 	total := p.sum(data)
-	point := Point{}
 	w := p.image.Size().Width
 	h := p.image.Size().Height
 	center := fyne.NewPos(w/2, h/2)
@@ -46,8 +45,18 @@ func (p *pieChartRenderer) AtPointer(pos fyne.PointEvent) []Point {
 		angle := p.getAngle(total, d)
 		y := h - pos.Position.Y
 		if p.pointInSector(r, center, fyne.NewPos(pos.Position.X, y), angle, currAngle) {
+			point := Point{}
 			point.Value = d
-			point.Position = pos.Position
+
+			// data coord is in the "inner middle" of the pie slice
+			// so we need to calculate the bisector axis and get
+			// x and y at the center of the radius
+			bisector := currAngle + angle/2
+			r /= 2
+			px := center.X + float32(r*math.Cos((bisector-90)*math.Pi/180))
+			py := center.Y + float32(r*math.Sin((bisector-90)*math.Pi/180))
+			point.Position = fyne.NewPos(px, py)
+
 			return []Point{point}
 		}
 		currAngle += angle
