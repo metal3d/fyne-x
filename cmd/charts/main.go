@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"image/color"
-	"log"
 	"math/rand"
 	"time"
 
@@ -30,16 +29,16 @@ func main() {
 		data[i] = rand.Float32()*20 - 10
 	}
 
-	line := charts.NewChart(charts.Line, &charts.Options{
+	line := charts.NewLineChart(&charts.Options{
 		LineWidth:       2,
 		BackgroundColor: color.RGBA{0x00, 0x00, 0x33, 0x00},
 	})
 	line.Plot(data)
 
-	bar := charts.NewChart(charts.Bar, nil)
+	bar := charts.NewBarChart(nil)
 	bar.Plot(data)
 
-	pie := charts.NewChart(charts.Pie, nil)
+	pie := charts.NewPieChart(nil)
 	pie.Plot([]float32{30, 20, 55, 34})
 
 	//pie2 := charts.NewChart(charts.Pie, &charts.Options{
@@ -59,7 +58,7 @@ func main() {
 	}
 
 	multiline := NewMousePlot(charts.Line, nil)
-	multiline2 := charts.NewChart(charts.Line, &charts.Options{
+	multiline2 := charts.NewLineChart(&charts.Options{
 		LineWidth: 1,
 		Scheme:    charts.RandomScheme(),
 	})
@@ -208,7 +207,7 @@ type MousePie struct {
 }
 
 func NewMousePie(opts *charts.Options) *MousePie {
-	m := &MousePie{Chart: charts.NewChart(charts.Pie, opts)}
+	m := &MousePie{Chart: charts.NewPieChart(opts)}
 	m.BaseWidget.ExtendBaseWidget(m)
 	return m
 }
@@ -217,9 +216,7 @@ func (m *MousePie) Refresh() {
 	m.Chart.Refresh()
 }
 
-func (m *MousePie) MouseIn(e *desktop.MouseEvent) {
-	log.Println("MouseIn")
-}
+func (m *MousePie) MouseIn(e *desktop.MouseEvent) {}
 
 func (m *MousePie) MouseMoved(e *desktop.MouseEvent) {
 	overlay := m.Overlay()
@@ -233,13 +230,13 @@ func (m *MousePie) MouseMoved(e *desktop.MouseEvent) {
 	}
 
 	p := points[0]
-	text := canvas.NewText(fmt.Sprintf("%0.1f%%", p.Value), color.Black)
-	text.TextSize = 9
+	text := canvas.NewText(fmt.Sprintf("%0.1f%%", p.Value), color.White)
+	text.TextSize = 7
 	s := fyne.MeasureText(text.Text, text.TextSize, text.TextStyle)
-	text.Move(p.Position.Subtract(fyne.NewPos(s.Width/2, s.Height)))
+	text.Move(p.Position.Subtract(fyne.NewPos(s.Width/2, s.Height/2)))
+
 	overlay.Objects = []fyne.CanvasObject{text}
 	m.Refresh()
-
 }
 
 func (m *MousePie) MouseOut() {
