@@ -4,11 +4,15 @@ import "image/color"
 
 // Options holds the options for the plot.
 type Options struct {
+
+	// BackgroundColor is the background color of the plot.
+	BackgroundColor color.Color
+
 	// LineWidth is the width of the line. Default to 1.0.
 	LineWidth float32
 
-	// BackgroundColor is the background that fills the "line" chart (below the line).
-	BackgroundColor color.Color
+	// FillColor is the background that fills the "line" chart (below the line).
+	FillColor color.Color
 
 	// LineColor is the color of the line. Default is color.Transparent.
 	LineColor color.Color

@@ -22,9 +22,13 @@ type DataInfo struct {
 // Pointable is a chart where a "pointer event" can be used
 // to get the data at a given position.
 type Pointable interface {
-	// AtPointer return the entire data set and position in
+	// AtPointer return the positions and values in
 	// the chart at the given pointer position.
 	AtPointer(fyne.PointEvent) []DataInfo
+
+	// AtIndex return the positions and values in
+	// the chart at the given data index.
+	AtIndex(dataline, index int) *DataInfo
 }
 
 // Rasterizer represents a chart that uses a canvas.Raster to draw the chart.

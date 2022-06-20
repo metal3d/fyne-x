@@ -17,27 +17,30 @@ var _ Rasterizer = (*lineChartRenderer)(nil)
 var _ Overlayable = (*lineChartRenderer)(nil)
 
 type lineChartRenderer struct {
-	chart   *Chart
-	image   *canvas.Raster
-	overlay *fyne.Container
+	chart      *Chart
+	image      *canvas.Raster
+	overlay    *fyne.Container
+	background *fyne.Container
 }
 
 func newLineChartRenderer(p *Chart) *lineChartRenderer {
 	l := &lineChartRenderer{
-		chart:   p,
-		overlay: container.NewWithoutLayout(),
+		chart:      p,
+		overlay:    container.NewWithoutLayout(),
+		background: container.NewWithoutLayout(),
 	}
 	l.image = canvas.NewRaster(l.raster)
 	return l
 }
 
-// AtPointer return a data "Point" priving position and value of each point
-// closed to the given pos.
-func (l *lineChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
+func (l *lineChartRenderer) AtIndex(dataline, index int) *DataInfo {
 	l.chart.locker.Lock()
 	defer l.chart.locker.Unlock()
 
-	points := make([]DataInfo, len(l.chart.data))
+	if index < 0 || index >= len(l.chart.data[dataline]) {
+		return nil
+	}
+
 	w := l.image.Size().Width
 	h := l.image.Size().Height
 
@@ -46,27 +49,43 @@ func (l *lineChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
 		fyne.NewSize(w, h),
 	)
 
-	for i, d := range l.chart.data {
-		step := float32(w) / float32(len(d)-1)
-		x := int(pos.Position.X / step)
-		y := zeroY - float64(d[x])*scale
-		points[i] = DataInfo{
-			Position: fyne.Position{
-				X: (float32(x) * step),
-				Y: float32(y),
-			},
-			Value: d[x],
-		}
+	v := l.chart.data[dataline][index]
+	step := float32(w) / float32(len(l.chart.data[dataline])-1)
+	x := int(float32(index) * step)
+	y := zeroY - float64(v)*scale
+	return &DataInfo{
+		Value:    v,
+		Position: fyne.NewPos(float32(x), float32(y)),
 	}
+}
 
+// AtPointer return a data "Point" priving position and value of each point
+// closed to the given pos.
+func (l *lineChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
+
+	points := make([]DataInfo, len(l.chart.data))
+	indexes := make([]int, len(l.chart.data))
+
+	l.chart.locker.Lock()
+	for i, d := range l.chart.data {
+		step := float32(l.image.Size().Width) / float32(len(d)-1)
+		index := int(pos.Position.X / step)
+		indexes[i] = index
+	}
+	l.chart.locker.Unlock()
+
+	for i, index := range indexes {
+		points[i] = *l.AtIndex(i, index)
+	}
 	return points
 }
 
 func (l *lineChartRenderer) Destroy() {}
 
 func (l *lineChartRenderer) Layout(size fyne.Size) {
-	l.overlay.Resize(size)
-	l.image.Resize(size)
+	for _, o := range l.Objects() {
+		o.Resize(size)
+	}
 }
 
 func (l *lineChartRenderer) MinSize() fyne.Size {
@@ -74,7 +93,7 @@ func (l *lineChartRenderer) MinSize() fyne.Size {
 }
 
 func (l *lineChartRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{l.image, l.overlay}
+	return []fyne.CanvasObject{l.background, l.image, l.overlay}
 }
 
 func (l *lineChartRenderer) Overlay() *fyne.Container {
@@ -82,6 +101,11 @@ func (l *lineChartRenderer) Overlay() *fyne.Container {
 }
 
 func (l *lineChartRenderer) Refresh() {
+	if l.chart.options.BackgroundColor != nil {
+		rect := canvas.NewRectangle(l.chart.options.BackgroundColor)
+		rect.Resize(l.image.Size())
+		l.background.Objects = []fyne.CanvasObject{rect}
+	}
 	l.image.Refresh()
 }
 
@@ -99,6 +123,7 @@ func (l *lineChartRenderer) raster(w, h int) image.Image {
 	lineWidth := l.chart.options.LineWidth * scaling(l.image)
 
 	scanner := createScanner(w, h)
+
 	zeroY, scaler := globalZeroAxisY(l.chart, fyne.NewSize(
 		float32(scanner.Dest.Bounds().Dx()),
 		float32(scanner.Dest.Bounds().Dy()),
@@ -106,21 +131,21 @@ func (l *lineChartRenderer) raster(w, h int) image.Image {
 
 	for index, data := range l.chart.data {
 		steps := float64(w-int(lineWidth*2)) / float64(len(data)-1)
-		fill := createFiller(scanner)
-		var col color.Color
-		if len(l.chart.data) > 1 {
-			col = l.chart.options.Scheme.ColorAt(index)
-			r, g, b, _ := col.RGBA()
-			a := 128
-			col = color.NRGBA{uint8(r), uint8(g), uint8(b), uint8(a)}
-		} else {
-			col = l.chart.options.BackgroundColor
-		}
-		fill.SetColor(col)
 
 		lw := float64(lineWidth)
 		y := zeroY - float64(data[0])*scaler
-		if l.chart.options.BackgroundColor != nil {
+		var col color.Color
+		if l.chart.options.FillColor != nil {
+			fill := createFiller(scanner)
+			if len(l.chart.data) > 1 {
+				col = l.chart.options.Scheme.ColorAt(index)
+				r, g, b, _ := col.RGBA()
+				a := 0x99
+				col = color.NRGBA{uint8(r), uint8(g), uint8(b), uint8(a)}
+			} else {
+				col = l.chart.options.FillColor
+			}
+			fill.SetColor(col)
 			if y > zeroY {
 				y -= lw
 			} else if y < zeroY {

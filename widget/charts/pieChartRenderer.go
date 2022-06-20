@@ -34,6 +34,11 @@ func newPieChartRenderer(chart *Chart) *pieChartRenderer {
 	return p
 }
 
+func (*pieChartRenderer) AtIndex(_, i int) *DataInfo {
+	//TODO
+	return nil
+}
+
 func (p *pieChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
 	data := p.chart.data[0] // only one series is possible with pie chart
 	total := p.sum(data)

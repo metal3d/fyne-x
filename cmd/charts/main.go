@@ -30,7 +30,8 @@ func main() {
 
 	line := charts.NewLineChart(&charts.Options{
 		LineWidth:       2,
-		BackgroundColor: color.RGBA{0x00, 0x00, 0x33, 0x00},
+		FillColor:       color.RGBA{0x00, 0x00, 0x33, 0x00},
+		BackgroundColor: color.White,
 	})
 	line.Plot(data)
 
@@ -40,7 +41,6 @@ func main() {
 	pie := charts.NewPieChart(nil)
 	pie.Plot([]float32{30, 20, 55, 34})
 
-	//pie2 := charts.NewChart(charts.Pie, &charts.Options{
 	pie2 := NewMousePie(&charts.Options{
 		Scheme:    charts.AnalogousScheme(color.RGBA{0xAE, 0x44, 0x44, 0x00}),
 		LineWidth: 2,
@@ -110,13 +110,8 @@ type MousePlot struct {
 func NewMousePlot(kind charts.Type, opts *charts.Options) *MousePlot {
 	m := &MousePlot{Chart: *charts.NewChart(kind, opts)}
 	m.kind = kind
-	m.Debug = true
 	return m
 }
-
-//func (m *MousePlot) Refresh() {
-//	m.Chart.Refresh()
-//}
 
 func (m *MousePlot) MouseIn(e *desktop.MouseEvent) {
 	Pause = true

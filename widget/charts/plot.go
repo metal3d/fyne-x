@@ -38,7 +38,6 @@ type Chart struct {
 	options  *Options
 	locker   *sync.Mutex
 	renderer fyne.WidgetRenderer
-	Debug    bool
 }
 
 // NewChart creates a new plot. "kind" defines the kind of plot (pie, bar, line...).
@@ -57,9 +56,9 @@ func NewChart(kind Type, options *Options) *Chart {
 	}
 	if options == nil {
 		options = &Options{
-			BackgroundColor: theme.DisabledButtonColor(),
-			LineColor:       lineColor,
-			LineWidth:       float32(lineWidth),
+			FillColor: theme.DisabledButtonColor(),
+			LineColor: lineColor,
+			LineWidth: float32(lineWidth),
 		}
 	}
 
@@ -71,7 +70,7 @@ func NewChart(kind Type, options *Options) *Chart {
 		options.Scheme = AnalogousScheme(nil)
 	}
 
-	if options.BackgroundColor == nil && options.LineWidth == 0.0 {
+	if options.FillColor == nil && options.LineWidth == 0.0 {
 		// indicate a Warning to the user Because the chart can be completely transparent
 		log.Println(
 			"Warning: BackgroundColor is transparent and lineWidth is 0.0. " +
@@ -82,6 +81,13 @@ func NewChart(kind Type, options *Options) *Chart {
 	plot.options = options
 	plot.ExtendBaseWidget(plot)
 	return plot
+}
+
+// Clear removes all the data from the chart. It will not Refresh the chart view.
+func (plot *Chart) Clear() {
+	plot.locker.Lock()
+	defer plot.locker.Unlock()
+	plot.data = [][]float32{}
 }
 
 // CreateRenderer is a private method to Fyne which links this widget to its renderer.
@@ -142,13 +148,6 @@ func (plot *Chart) Plot(data []float32) {
 	plot.Refresh()
 }
 
-// Clear removes all the data from the chart. It will not Refresh the chart view.
-func (plot *Chart) Clear() {
-	plot.locker.Lock()
-	defer plot.locker.Unlock()
-	plot.data = [][]float32{}
-}
-
 // Refresh redraw the chart.
 //
 // Implements: fyne.Widget
@@ -158,10 +157,10 @@ func (plot *Chart) Refresh() {
 	}
 }
 
+// Resize changes the size of the chart.
+//
+// Implements: fyne.CanvasObject
 func (plot *Chart) Resize(size fyne.Size) {
-	if plot.Debug {
-		log.Println("Chart.Resize", size)
-	}
 	if plot.renderer != nil {
 		for _, o := range plot.renderer.Objects() {
 			o.Resize(size)
@@ -169,6 +168,9 @@ func (plot *Chart) Resize(size fyne.Size) {
 	}
 }
 
+// Size returns the size of the chart.
+//
+// Implements: fyne.CanvasObject
 func (plot *Chart) Size() fyne.Size {
 	if plot.renderer != nil {
 		if o, ok := plot.renderer.(Rasterizer); ok {
@@ -177,13 +179,3 @@ func (plot *Chart) Size() fyne.Size {
 	}
 	return fyne.Size{}
 }
-
-//func (plot *Chart) MinSize() fyne.Size {
-//	if plot.Debug {
-//		log.Println("Chart.MinSize")
-//	}
-//	if plot.renderer != nil {
-//		return plot.renderer.MinSize()
-//	}
-//	return fyne.NewSize(0, 0)
-//}

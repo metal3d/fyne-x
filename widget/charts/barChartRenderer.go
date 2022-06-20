@@ -33,34 +33,46 @@ func newBarChartRenderer(p *Chart) fyne.WidgetRenderer {
 	return renderer
 }
 
-func (b *barChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
+func (b *barChartRenderer) AtIndex(dataline, i int) *DataInfo {
 	b.chart.locker.Lock()
 	defer b.chart.locker.Unlock()
+	if dataline >= len(b.chart.data) {
+		return nil
+	}
 
-	points := make([]DataInfo, len(b.chart.data))
+	if i < 0 || i >= len(b.chart.data[dataline]) {
+		return nil
+	}
+
+	lineWidth := b.chart.options.LineWidth * scaling(b.image)
 	w := b.image.Size().Width
 	h := b.image.Size().Height
+	steps := w / float32(largerDataLine(b.chart.data))
 	zeroY, scale := globalZeroAxisY(
 		b.chart,
 		fyne.NewSize(w, h),
 	)
-
-	steps := w / float32(largerDataLine(b.chart.data))
-	lineWidth := b.chart.options.LineWidth * scaling(b.image)
 	barWidth := (steps / float32(len(b.chart.data))) - lineWidth
+	posx := float32(dataline)*barWidth + float32(i)*steps + barWidth/2
+	y := float32(zeroY) - b.chart.data[dataline][i]*float32(scale)
+	return &DataInfo{
+		Value:    b.chart.data[dataline][i],
+		Position: fyne.NewPos(posx, y),
+	}
+}
 
-	for i, d := range b.chart.data {
-		x := int(pos.Position.X / steps)
-		v := d[x]
-		posx := float32(i)*barWidth + float32(x)*steps + barWidth/2
-		y := float32(zeroY) - v*float32(scale)
-		points[i] = DataInfo{
-			Position: fyne.Position{
-				X: posx,
-				Y: y,
-			},
-			Value: v,
-		}
+func (b *barChartRenderer) AtPointer(pos fyne.PointEvent) []DataInfo {
+
+	w := b.image.Size().Width
+
+	b.chart.locker.Lock()
+	steps := w / float32(largerDataLine(b.chart.data))
+	b.chart.locker.Unlock()
+
+	points := make([]DataInfo, len(b.chart.data))
+	for i := range b.chart.data {
+		index := int(pos.Position.X / steps)
+		points[i] = *b.AtIndex(i, index)
 	}
 	return points
 }
@@ -139,10 +151,10 @@ func (b *barChartRenderer) raster(w, h int) image.Image {
 		if len(b.chart.data) > 1 {
 			col = b.chart.options.Scheme.ColorAt(index)
 			red, green, blue, _ := col.RGBA()
-			a := 128
+			a := 0x99
 			col = color.NRGBA{uint8(red), uint8(green), uint8(blue), uint8(a)}
 		} else {
-			col = b.chart.options.BackgroundColor
+			col = b.chart.options.FillColor
 		}
 		filler.SetColor(col)
 		drawBars(index, lineWidth, barWidth, steps, data, zeroY, scaler, filler)
@@ -151,7 +163,7 @@ func (b *barChartRenderer) raster(w, h int) image.Image {
 		if index > 0 {
 			col = b.chart.options.Scheme.ColorAt(index)
 			red, green, blue, _ := col.RGBA()
-			a := 245
+			a := 0x99
 			col = color.NRGBA{uint8(red), uint8(green), uint8(blue), uint8(a)}
 		} else {
 			col = b.chart.options.LineColor
