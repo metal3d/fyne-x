@@ -10,6 +10,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/stretchr/testify v1.8.0
+	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564
 	github.com/wagslane/go-password-validator v0.3.0
 	golang.org/x/image v0.3.0
 )
