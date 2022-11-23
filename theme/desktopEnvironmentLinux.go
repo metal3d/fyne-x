@@ -15,7 +15,8 @@ import (
 
 // FromDesktopEnvironment returns a new WindowManagerTheme instance for the current desktop session.
 // If the desktop manager is not supported or if it is not found, return the default theme
-func FromDesktopEnvironment() fyne.Theme {
+// Flags are optional, they define which desktop settings to use. If set to DesktopGrapNone, so only the colors are applied.
+func FromDesktopEnvironment(flags ...DesktopGrapFlag) fyne.Theme {
 	wm := os.Getenv("XDG_CURRENT_DESKTOP")
 	if wm == "" {
 		wm = os.Getenv("DESKTOP_SESSION")
@@ -23,8 +24,12 @@ func FromDesktopEnvironment() fyne.Theme {
 	wm = strings.ToLower(wm)
 
 	switch wm {
-	case "gnome", "xfce", "unity", "gnome-shell", "gnome-classic", "mate", "gnome-mate":
-		return desktop.NewGnomeTheme(-1)
+	case "gnome", "gnome-shell", "unity", "gnome-classic", "ubuntu:gnome", "ubuntu:unity":
+		adw := NewAdwaita()
+		adw.(*Adwaita).setGTKFallbackTheme(desktop.NewGTKTheme(-1, flags...))
+		return adw
+	case "xfce", "mate", "gnome-mate":
+		return desktop.NewGTKTheme(-1, flags...)
 	case "kde", "kde-plasma", "plasma", "lxqt":
 		return desktop.NewKDETheme()
 

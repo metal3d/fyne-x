@@ -9,6 +9,6 @@ import (
 )
 
 // NewGnomeTheme returns the GNOME theme. If the current OS is not Linux, it returns the default theme.
-func NewGnomeTheme() fyne.Theme {
+func NewGTKTheme() fyne.Theme {
 	return theme.DefaultTheme()
 }

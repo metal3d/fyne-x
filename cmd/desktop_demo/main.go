@@ -23,14 +23,14 @@ func main() {
 
 	// Gnome/GTK theme invertion
 	invertButton := widget.NewButton("Invert Gnome theme", func() {
-		if t, ok := app.Settings().Theme().(*xdesktop.GnomeTheme); ok {
+		if t, ok := app.Settings().Theme().(*xdesktop.GTKTheme); ok {
 			t.Invert()
 			win.Content().Refresh()
 		}
 	})
 
 	// the invertButton can only work on Gnome / GTK theme.
-	if _, ok := app.Settings().Theme().(*xdesktop.GnomeTheme); !ok {
+	if _, ok := app.Settings().Theme().(*xdesktop.GTKTheme); !ok {
 		invertButton.Disable()
 		invertButton.SetText("Invert only works on Gnome/GTK")
 	}
@@ -76,7 +76,7 @@ func createExplanationLabel(app fyne.App) fyne.CanvasObject {
 	var current string
 
 	switch app.Settings().Theme().(type) {
-	case *xdesktop.GnomeTheme:
+	case *xdesktop.GTKTheme:
 		current = "Gnome / GTK"
 	case *xdesktop.KDETheme:
 		current = "KDE / Plasma"

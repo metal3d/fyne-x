@@ -75,7 +75,7 @@ func TestLoadFromEnvironment(t *testing.T) {
 		switch env {
 		case "GNOME":
 			switch v := current.(type) {
-			case *desktop.GnomeTheme:
+			case *desktop.GTKTheme, *Adwaita:
 				// OK
 			default:
 				t.Error("Theme is not GnomeTheme")
