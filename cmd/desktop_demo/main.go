@@ -4,6 +4,8 @@
 package main
 
 import (
+	"log"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -11,12 +13,13 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	xtheme "fyne.io/x/fyne/theme"
+	"fyne.io/x/fyne/theme/desktop"
 	xdesktop "fyne.io/x/fyne/theme/desktop"
 )
 
 func main() {
 	app := app.New()
-	app.Settings().SetTheme(xtheme.FromDesktopEnvironment())
+	app.Settings().SetTheme(xtheme.FromDesktopEnvironment(desktop.DesktopGrabAll))
 	win := app.NewWindow("Desktop integration demo")
 	win.Resize(fyne.NewSize(550, 390))
 	win.CenterOnScreen()
@@ -76,12 +79,15 @@ func createExplanationLabel(app fyne.App) fyne.CanvasObject {
 	var current string
 
 	switch app.Settings().Theme().(type) {
+	case *xtheme.Adwaita:
+		current = "Adwaita (Gnome shell)"
 	case *xdesktop.GTKTheme:
 		current = "Gnome / GTK"
 	case *xdesktop.KDETheme:
 		current = "KDE / Plasma"
 	default:
 		current = "This window manager is not supported for now"
+		log.Printf("This window manager is not supported for now %T\n", app.Settings().Theme())
 	}
 
 	text := "Current Desktop: " + current + "\n"
