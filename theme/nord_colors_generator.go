@@ -42,13 +42,13 @@ import (
 
 var nordDarkScheme = map[fyne.ThemeColorName]color.Color{
 {{- range $key, $value := .DarkScheme }}
-    {{$key}}: {{$value.Col}}, // Nord color name @{{$value.NordName}}
+    {{$key}}: {{ printf "color.RGBA{0x%02x, 0x%02x, 0x%02x, 0x%02x}" $value.Col.R $value.Col.G $value.Col.B $value.Col.A }}, // Nord color name @{{$value.NordName}}
 {{- end }}
 }
 
 var nordLightScheme = map[fyne.ThemeColorName]color.Color{
 {{- range $key, $value := .LightScheme }}
-    {{$key}}: {{$value.Col}}, // Nord color name @{{$value.NordName}}
+    {{$key}}: {{ printf "color.RGBA{0x%02x, 0x%02x, 0x%02x, 0x%02x}" $value.Col.R $value.Col.G $value.Col.B $value.Col.A }}, // Nord color name @{{$value.NordName}}
 {{- end }}
 }`
 )
@@ -107,8 +107,8 @@ var (
 )
 
 type colorInfo struct {
-	Col      string // go formated color (color.RGBA{0x00, 0x00, 0x00, 0x00})
-	NordName string // nord color name
+	Col      *color.RGBA // go formated color (color.RGBA{0x00, 0x00, 0x00, 0x00})
+	NordName string      // nord color name
 }
 
 func main() {
@@ -137,13 +137,13 @@ func main() {
 
 	for key, value := range lightPalette {
 		lightScheme[key] = colorInfo{
-			Col:      fmt.Sprintf("color.RGBA{0x%02x, 0x%02x, 0x%02x, 0x%02x}", nordScheme[value].R, nordScheme[value].G, nordScheme[value].B, nordScheme[value].A),
+			Col:      nordScheme[value],
 			NordName: value,
 		}
 	}
 	for key, value := range darkPalette {
 		darkScheme[key] = colorInfo{
-			Col:      fmt.Sprintf("color.RGBA{0x%02x, 0x%02x, 0x%02x, 0x%02x}", nordScheme[value].R, nordScheme[value].G, nordScheme[value].B, nordScheme[value].A),
+			Col:      nordScheme[value],
 			NordName: value,
 		}
 	}
